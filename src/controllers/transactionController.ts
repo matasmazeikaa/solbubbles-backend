@@ -7,8 +7,6 @@ import { processTransaction } from '@/modules/transactionModule';
 import { getServiceClient } from '@/supabasedb';
 
 const getGamePoolAuthorityWallet = () => {
-	console.log(process.env.GAME_POOL_AUTHORITY_WALLET, 'wallet');
-
 	return Keypair.fromSecretKey(
 		Uint8Array.from(
 			JSON.parse(process.env.GAME_POOL_AUTHORITY_WALLET) as any

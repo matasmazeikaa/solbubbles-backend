@@ -33,9 +33,6 @@ export class BalanceMassCommand extends Command<GameRoom> {
 
 		
 		if (virusToAdd > 0) {
-			console.log(virusToAdd, 'virusToAdd');
-			console.log(this.state.virus.length, 'virus length');
-
 			this.dispatcher.dispatch(new AddVirusCommand(), {
 				toAdd: virusToAdd
 			});

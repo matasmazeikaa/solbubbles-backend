@@ -146,11 +146,7 @@ const pollSignatureStatusUntillFinalized = async (
 		: new Date().getTime();
 
 	try {
-		console.log(signature, 'signature');
-
 		const status = await connection.getSignatureStatus(signature);
-
-		console.log(status, 'transaction status');
 
 		if (status.value?.confirmationStatus === 'finalized') {
 			return status;
@@ -212,8 +208,6 @@ export const processTransaction = async ({
 		const transactionToSave = getServiceClient().from('transactions').insert({
 			transactionSignature
 		})
-
-		console.log(transactionToSave);
 
 		if (isTransactionTypeDepositSplTokens(parsedTransaction)) {
 			return Promise.all([

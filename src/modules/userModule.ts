@@ -70,8 +70,6 @@ export const increaseUserBalanceWithLamports = async ({
 			.select()
 			.single();
 
-		console.log(newUser);
-
 		return newUser;
 	} catch (error) {
 		throw Error(error as string);

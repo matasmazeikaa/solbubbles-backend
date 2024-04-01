@@ -164,7 +164,6 @@ export class GameState extends Schema {
 				.reduce((a, b, c) => (b ? a.concat(c) : a), []);
 
 			for (let m = 0; m < virusCollision.length; m++) {
-				console.log('virus collided')
 				const colidedVirus = this.virus[virusCollision[m]];
 
 				// Move virus to the direction of the shooted mass food
@@ -222,20 +221,13 @@ export class GameState extends Schema {
 				virusCollision > 0 &&
 				currentCell.mass > this.virus[virusCollision].mass
 			) {
-				console.log(currentCell.mass, 'current cell mass');
-				console.log(this.virus[virusCollision].mass, 'virus mass');
 				if (BotConfig.ACTIVE) {
 					return;
 				}
 
 				this.players[player.id].virusSplitCell(currentCell);
 
-				console.log(virusCollision);
-				console.log(this.virus.length, 'virus length before deletio');
-
 				this.virus.splice(virusCollision, 1);
-
-				console.log(this.virus.length, 'virus length after deletio');
 			}
 
 			let masaGanada = 0;

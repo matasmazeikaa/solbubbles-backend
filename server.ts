@@ -18,8 +18,6 @@ const app = express();
 // // TODOADD it with PM2
 // const PORT = Number(process.env.PORT) + Number(process.env.NODE_APP_INSTANCE);
 
-console.log(process.env.SUPABASE_PUBLIC_KEY, 'loggin supabase public key');
-
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -51,8 +49,6 @@ const ROOM = {
 } as const;
 
 gameServer.listen(3000);
-
-console.log(123456)
 
 gameServer.define('lobby', LobbyRoom);
 

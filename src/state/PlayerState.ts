@@ -93,9 +93,6 @@ export class Player extends Schema {
 	}
 
 	get canSplit() {
-		console.log(GameConfig.limitSplit);
-		console.log(this.massTotal);
-		console.log(GameConfig.defaultPlayerMass);
 		return (
 			this.cells.length < GameConfig.limitSplit &&
 			this.massTotal >= GameConfig.defaultPlayerMass * 2
