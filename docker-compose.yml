@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+    api:
+      container_name: api
+      build: .
+      environment:
+        - NODE_ENV=production
+      volumes:
+        - .:/usr/src/app
+      ports:
+        - 3000:3000

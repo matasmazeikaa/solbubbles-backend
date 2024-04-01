@@ -1,0 +1,9 @@
+.env
+.history
+.vscode
+.DS_Store
+/alice.pem
+/node_modules
+/data
+/build
+/dist/**/*
