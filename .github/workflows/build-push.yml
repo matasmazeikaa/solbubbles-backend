@@ -21,8 +21,8 @@ jobs:
       
       - name: Build and push Docker image
         run: |
-          docker build -t matasdev/solbubbles-backend:tagname .
-          docker push matasdev/solbubbles-backend:tagname
+          docker build -t matasdev/solbubbles-backend:latest .
+          docker push matasdev/solbubbles-backend:latest
       
       - name: Deploy to VPS
         uses: appleboy/ssh-action@master
@@ -31,6 +31,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            docker pull matasdev/solbubbles-backend:tagname
-            cd repo_name
+            docker pull matasdev/solbubbles-backend:latest
+            cd /var/www/solbubbles-backend
             docker-compose up -d --build
