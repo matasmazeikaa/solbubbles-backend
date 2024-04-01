@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm install --force
 
 # Copy the rest of the application code
-COPY . .
+COPY . /usr/src/app
 
 # Build TypeScript files
 RUN npm run build
