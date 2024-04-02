@@ -30,6 +30,13 @@ jobs:
           host: ${{ secrets.VPS_IP }}
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
+          env:
+            FRONTEND_URL: ${{ env.FRONTEND_URL }}
+            GAME_POOL_AUTHORITY_WALLET: ${{ env.GAME_POOL_AUTHORITY_WALLET }}
+            RPC_ENDPOINT: ${{ env.RPC_ENDPOINT }}
+            SUPABASE_URL: ${{ env.SUPABASE_URL }}
+            SUPABASE_PUBLIC_KEY: ${{ env.SUPABASE_PUBLIC_KEY }}
+            SUPABASE_SERVICE_KEY: ${{ env.SUPABASE_SERVICE_KEY }}
           script: |
             docker pull matasdev/solbubbles-backend:latest
             cd /var/www/solbubbles-backend
