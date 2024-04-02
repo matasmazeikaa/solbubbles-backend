@@ -33,4 +33,5 @@ jobs:
           script: |
             docker pull matasdev/solbubbles-backend:latest
             cd /var/www/solbubbles-backend
+            git pull
             docker compose up -d --build

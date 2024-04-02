@@ -52,8 +52,6 @@ gameServer.listen(3000);
 
 gameServer.define('lobby', LobbyRoom);
 
-console.log('1');
-
 export const rooms = [
 	gameServer
 		.define(ROOM.gameRoom1.id, GameRoom, {
