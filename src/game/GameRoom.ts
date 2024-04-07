@@ -15,6 +15,7 @@ import { restorePlayerBalances } from '@/modules/backupModule';
 import { toNumberSafe } from '@/utils/game-util';
 import { getServiceClient } from '@/supabasedb';
 import { TOKEN_CONFIG } from '@/constants';
+import { increaseUserTotalWinnings } from '@/modules/userStatisticsModule';
 
 export class GameRoom extends Room<GameState> {
 	@type('number')
@@ -24,8 +25,20 @@ export class GameRoom extends Room<GameState> {
 
 	fixedTimeStep = 1000 / 60;
 
-	async onAuth(_, options: any) {
-		const decodedData = jwt.verify(options.jwt, process.env.JWT_SECRET);
+	async onAuth(_: any, options: { jwt: string }) {
+		try {
+			return await this.handleUserRoomEnter(options.jwt);
+		} catch (e: any) {
+			throw new ServerError(e.statusCode, e.message);
+		}
+	}
+
+	async handleUserRoomEnter(jwtToken: string) {
+		const decodedData = jwt.verify(jwtToken, process.env.JWT_SECRET) as {
+			publicKey: string;
+			signature: string;
+			nonce: number
+		};
 
 		if (
 			!isRequestAuthorized({
@@ -70,12 +83,10 @@ export class GameRoom extends Room<GameState> {
 			);
 		}
 
-		await lowerUserBalanceWithLamports(
+		return await lowerUserBalanceWithLamports(
 			decodedData.publicKey,
 			entryLamports
 		);
-
-		return user;
 	}
 
 	isAlreadyInGameRoom(publicKey: string) {
@@ -90,14 +101,16 @@ export class GameRoom extends Room<GameState> {
 		return isFound;
 	}
 
-	onCreate(options) {
+	onCreate(options: {
+		roomSplTokenEntryFee: number;
+	}) {
 		this.maxClients = 100;
 
 		this.setState(new GameState());
 		this.roomSplTokenEntryFee = options.roomSplTokenEntryFee;
 
 		this.onMessage('mouse', (client, message) => {
-			const player = this.state.players[client.sessionId];
+			const player = this.state.players.get(client.sessionId);
 
 			if (!player) {
 				return;
@@ -108,14 +121,23 @@ export class GameRoom extends Room<GameState> {
 		});
 
 		this.onMessage('fire-food', (client) => {
-			this.state.players[client.sessionId].fireFood(this.state.massFood);
+			this.state.players.get(client.sessionId).fireFood(this.state.massFood);
 		});
 
 		this.onMessage('split', (client) => {
-			this.state.players[client.sessionId].splitAllCells();
+			this.state.players.get(client.sessionId).splitAllCells();
 		});
 
-		this.onMessage('rejoin', (client) => {
+		this.onMessage('rejoin', async (client, { jwt }) => {
+			try {
+				await this.handleUserRoomEnter(jwt);
+			} catch (e: any) {
+				client.error(e.statusCode, e.message);
+				client.send('error', { message: e.message });
+
+				return;
+			}
+
 			this.onJoin(client, { publicKey: client.auth.publicKey });
 
 			client.send('room-info', {
@@ -127,8 +149,8 @@ export class GameRoom extends Room<GameState> {
 			client.send('pong', message);
 		});
 
-		this.onMessage('cash-out', (client) => {
-			const player = this.state.players[client.sessionId];
+		this.onMessage('cash-out', async (client) => {
+			const player = this.state.players.get(client.sessionId);
 
 			if (player?.isCashedOut || !player) {
 				return;
@@ -142,19 +164,31 @@ export class GameRoom extends Room<GameState> {
 				GameConfig.cashoutCooldown - Math.floor((diff / 1000) % 60);
 
 			if (secondsDiff <= 0) {
-				increaseUserBalanceWithTokens({
-					publicKey: client.auth.publicKey,
-					amountToIncrease: player.splTokens
-				}).then((data) => {
+				try {
+					const data = await increaseUserBalanceWithTokens({
+						publicKey: client.auth.publicKey,
+						amountToIncrease: player.splTokens
+					})
+
 					this.state.players.delete(client.sessionId);
 
-					console.log(data);
+					if (player.splTokens > this.roomSplTokenEntryFee) {
+						increaseUserTotalWinnings({
+							publicKey: client.auth.publicKey,
+							tokensWon: player.splTokens - this.roomSplTokenEntryFee
+						});
+					}
 
 					client.send('cash-out-success', {
 						amountWon: player.splTokens,
 						newDepositedBalance: data.depositedSplLamports
 					});
-				});
+				} catch {
+					throw new ServerError(
+						400,
+						'Failed to cashout. Please try again later.'
+					);
+				}
 			}
 		});
 
@@ -167,7 +201,9 @@ export class GameRoom extends Room<GameState> {
 		updateLobby(this);
 	}
 
-	onJoin(client: Client, options) {
+	onJoin(client: Client, options: {
+		publicKey: string;
+	}) {
 		this.dispatcher.dispatch(new OnJoinCommand(), {
 			sessionId: client.sessionId,
 			roomSplTokenEntryFee: this.roomSplTokenEntryFee,
@@ -182,7 +218,7 @@ export class GameRoom extends Room<GameState> {
 
 	async onLeave(client: Client) {
 		try {
-			if (this.state.players[client.sessionId]) {
+			if (this.state.players.get(client.sessionId)) {
 				await this.allowReconnection(client, 30);
 			}
 			client.send('room-info', {

@@ -23,10 +23,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 // Error handlerw
-app.use((err, _, res, __) => {
-	console.error(err.stack);
-	res.status(500).send('Something broke!');
-});
+
 // Routes:
 app.use('/api', routes);
 app.use('/monitor', monitor());
@@ -34,6 +31,8 @@ app.use('/monitor', monitor());
 const gameServer = new Server({
 	server: createServer(app)
 });
+
+gameServer.simulateLatency(100);
 
 const ROOM = {
 	gameRoom1: {
@@ -57,10 +56,13 @@ export const rooms = [
 		.define(ROOM.gameRoom1.id, GameRoom, {
 			roomSplTokenEntryFee: ROOM.gameRoom1.roomSplTokenEntryFee
 		})
-		.enableRealtimeListing(),
+		.enableRealtimeListing()
+		.setMaxListeners(100),
+
 	gameServer
 		.define(ROOM.gameRoom2.id, GameRoom, {
 			roomSplTokenEntryFee: ROOM.gameRoom2.roomSplTokenEntryFee
 		})
 		.enableRealtimeListing()
+		.setMaxListeners(100)
 ];

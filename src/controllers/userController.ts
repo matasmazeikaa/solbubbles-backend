@@ -1,4 +1,4 @@
-import express from 'express';
+import Router from 'express-promise-router';
 import jwt from 'jsonwebtoken';
 
 import { authHandler } from '@/middleware/auth.middleware';
@@ -7,7 +7,7 @@ import { processTransaction } from '@/modules/transactionModule';
 import { roundTokensFromLamports } from '@/utils/format';
 import { getServiceClient } from '@/supabasedb';
 
-const userController = express.Router();
+const userController = Router();
 
 userController.get('/', authHandler, async (req: any, res) => {
 	const { publicKey } = req.userData;
@@ -65,14 +65,10 @@ userController.post('/nonce', async (req: any, res) => {
 
 	const { data: user } = await getServiceClient().from('users').select('*').eq('publicKey', publicKey).single()
 
-	console.log(user)
-
 	if (!user) {
 		const { error } = await getServiceClient().from('users').insert({
 			'publicKey': publicKey,
 		})
-
-		console.log(error)
 
 		if (error) {
 			return res.status(400).json({

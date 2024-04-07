@@ -1,15 +1,18 @@
 import { Command } from '@colyseus/command';
 import { GameRoom } from '@/game/GameRoom';
 
+interface SetPlayerTargetCommandPayload {
+	x: number;
+	y: number;
+	sessionId: string;
+}
+
 export class SetPlayerTargetCommand extends Command<
 	GameRoom,
-	{
-		x: number;
-		y: number;
-	}
+	SetPlayerTargetCommandPayload
 > {
-	execute({ x, y, sessionId }) {
-		this.state.players[sessionId].target.x = x;
-		this.state.players[sessionId].target.y = y;
+	execute({ x, y, sessionId }: SetPlayerTargetCommandPayload) {
+		this.state.players.get(sessionId).target.x = x;
+		this.state.players.get(sessionId).target.y = y;
 	}
 }

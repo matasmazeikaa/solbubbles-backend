@@ -10,24 +10,27 @@ export class AddVirusCommand extends Command<
 		toAdd: number;
 	}
 > {
-	execute({ toAdd }) {
+	execute({ toAdd }: { toAdd: number }) {
 		for (let i = toAdd; i > 0; i--) {
 			const mass = VirusConfig.defaultMass;
 			const radius = massToRadius(mass);
-			const position = uniformPosition(this.state.virus, radius);
+			const viruses = Array.from(this.state.virus.values());
+			const position = uniformPosition(viruses, radius);
 
-			this.state.virus.push(
-				new VirusState().assign({
-					x: position.x,
-					y: position.y,
-					radius,
-					mass,
-					fill: VirusConfig.fill,
-					stroke: VirusConfig.stroke,
-					strokeWidth: VirusConfig.strokeWidth,
-					speed: 0
-				})
-			);
+			const virus = new VirusState().assign({
+				x: position.x,
+				y: position.y,
+				w: radius * 2,
+				h: radius * 2,
+				radius,
+				mass,
+				fill: VirusConfig.fill,
+				stroke: VirusConfig.stroke,
+				strokeWidth: VirusConfig.strokeWidth,
+				speed: 0
+			});
+
+			this.state.virus.set(virus.id, virus);
 		}
 	}
 }

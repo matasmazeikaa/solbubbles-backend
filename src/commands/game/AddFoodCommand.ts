@@ -4,6 +4,7 @@ import { GameRoom } from '@/game/GameRoom';
 import { FoodState } from '@/state/FoodState';
 import { massToRadius, uniformPosition } from '@/utils/game-util';
 import { generateId } from 'colyseus';
+import { Circle } from '@timohausmann/quadtree-ts';
 
 export class AddFoodCommand extends Command<
 	GameRoom,
@@ -11,22 +12,32 @@ export class AddFoodCommand extends Command<
 		toAdd: number;
 	}
 > {
-	execute({ toAdd }) {
+	execute({ toAdd }: { toAdd: number }) {
 		const radius = massToRadius(GameConfig.foodMass);
 
 		for (let i = toAdd; i > 0; i--) {
-			const position = uniformPosition(this.state.food, radius);
+			const foods = Array.from(this.state.food.values());
+			const position = uniformPosition(foods, radius);
 
-			this.state.food.push(
-				new FoodState(
-					generateId(),
-					position.x,
-					position.y,
-					radius,
-					Math.random() + 2,
-					Math.round(Math.random() * 360)
-				)
+			const food = new FoodState(
+				generateId(),
+				position.x,
+				position.y,
+				radius,
+				GameConfig.foodMass,
+				Math.round(Math.random() * 360)
 			);
+
+			this.state.food.set(food.id, food);
+
+			this.state.foodQuadTree.insert(
+				new Circle({
+					x: food.x,
+					y: food.y,
+					r: food.radius,
+					data: food
+				})
+			)
 		}
 	}
 }

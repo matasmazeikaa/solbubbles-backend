@@ -13,12 +13,10 @@ export enum GameConfig {
 	maxFood = 1000,
 	slowBase = 4.5,
 	logChat = 0,
-	networkUpdateFactor = 40,
-	maxHeartbeatInterval = 20000,
 	newPlayerInitialPosition = 'farthest',
 	massLossRate = 1,
 	minMassLoss = 50,
-	mergeTimer = 20,
+	mergeTimer = 5,
 	cashoutCooldown = 0,
 	immunityTimer = 10,
 	maxRoomUserAmount = 100
@@ -34,8 +32,10 @@ export enum VirusConfig {
 
 export const BotConfig = {
 	ACTIVE: false,
-	MAX_BOT: 60,
-	SPEED: 50
+	MAX_BOT: 40,
+	SPEED: 50,
+	startingSpeed: 6.25,
+	startingPlayerMass: 100,
 };
 // export enum GameConfig {
 // 	port = 3000,

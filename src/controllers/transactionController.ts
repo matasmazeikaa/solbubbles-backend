@@ -1,4 +1,4 @@
-import express from 'express';
+import Router from 'express-promise-router';
 import { body } from 'express-validator';
 import { Keypair, Transaction } from '@solana/web3.js';
 import { authHandler } from '@/middleware/auth.middleware';
@@ -14,7 +14,7 @@ const getGamePoolAuthorityWallet = () => {
 	);
 };
 
-const transactionController = express.Router();
+const transactionController = Router();
 
 transactionController.post(
 	'/sign-withdraw-transaction',

@@ -4,6 +4,7 @@ import {
 	USER_WITH_ADDRESS_NOT_FOUND
 } from '@/error-codes';
 import { getServiceClient } from '@/supabasedb';
+import {z} from 'zod';
 
 export const lowerUserBalanceWithLamports = async (
 	publicKey: string,
@@ -48,6 +49,12 @@ export const increaseUserBalanceWithLamports = async ({
 	publicKey: string;
 	amountToIncrease: number;
 }) => {
+
+    z.object({
+        publicKey: z.string(),
+        amountToIncrease: z.number()
+    }).parse({ publicKey, amountToIncrease });
+
 	const { data: user } = await getServiceClient()
 		.from('users')
 		.select('*')
@@ -76,6 +83,8 @@ export const increaseUserBalanceWithLamports = async ({
 	}
 };
 
+
+
 export const increaseUserBalanceWithTokens = async ({
 	publicKey,
 	amountToIncrease
@@ -83,8 +92,13 @@ export const increaseUserBalanceWithTokens = async ({
 	publicKey: string;
 	amountToIncrease: number;
 }) => {
+	const key = publicKey
+
+	console.log('key', key)
+	console.log('amountToIncrease', amountToIncrease)
+
 	return await increaseUserBalanceWithLamports({
-		publicKey,
+		publicKey: key,
 		amountToIncrease: amountToIncrease * TOKEN_CONFIG.LAMPORTS_PER_TOKEN
 	});
 }

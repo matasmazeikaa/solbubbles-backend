@@ -1,10 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { isRequestAuthorized } from '@/modules/auth';
 
-export const authHandler = (req, res, next) => {
+export const authHandler = (req: any, res: any, next: any) => {
 	try {
 		const token = req.headers.authorization.split(' ')[1];
-		const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+		const decodedData = jwt.verify(token, process.env.JWT_SECRET) as {
+			publicKey: string;
+			signature: string;
+			nonce: number;
+		};
 
 		req.userData = {
 			publicKey: decodedData.publicKey

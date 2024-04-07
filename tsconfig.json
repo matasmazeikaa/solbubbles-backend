@@ -5,7 +5,7 @@
 		"lib": ["es6"],
 		"target": "es2016",
 		"declaration": true,
-		"noImplicitAny": false,
+		"noImplicitAny": true,
 		"experimentalDecorators": true,
 		"noUnusedLocals": true /* Report errors on unused locals. */,
 		"noUnusedParameters": true /* Report errors on unused parameters. */,

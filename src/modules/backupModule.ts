@@ -5,9 +5,16 @@ import { increaseUserBalanceWithTokens } from './userModule';
 export const restorePlayerBalances = async (
 	players: MapSchema<Player, string>
 ) => {
-	const playerArray = Array.from(players.values());
 
-	for (const player of playerArray) {
-		await increaseUserBalanceWithTokens({publicKey: player.publicKey, amountToIncrease: player.splTokens});
-	}
+	players.forEach(async (player) => {
+		if (player.client) {
+			const publicKey = player.publicKey;
+			const amountToIncrease = player.splTokens;
+
+			await increaseUserBalanceWithTokens({
+				publicKey,
+				amountToIncrease
+			});
+		}
+	})
 };

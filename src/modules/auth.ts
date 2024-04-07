@@ -2,13 +2,21 @@ import nacl from 'tweetnacl'
 import bs58 from 'bs58'
 import util from 'util'
 
+interface ISigninMessage {
+	domain: string;
+	publicKey: string;
+	nonce: number;
+	statement: string;
+}
+
+
 export class SigninMessage {
 	domain: any;
 	publicKey: any;
 	nonce: number;
 	statement: any;
   
-	constructor({ domain, publicKey, nonce, statement }) {
+	constructor({ domain, publicKey, nonce, statement }: ISigninMessage) {
 	  this.domain = domain;
 	  this.publicKey = publicKey;
 	  this.nonce = nonce;
@@ -29,7 +37,11 @@ export class SigninMessage {
 	}
 }
 
-export const verifySignedMessage = ({publicKey, signature, nonce}) => {
+export const verifySignedMessage = ({publicKey, signature, nonce}: {
+	publicKey: string;
+	signature: string;
+	nonce: number;
+}) => {
 	try {
 		const signinMessage = new SigninMessage({
 			domain: process.env.FRONTEND_URL,
@@ -49,6 +61,10 @@ export const isRequestAuthorized = ({
 	publicKey,
 	signature,
 	nonce
+}: {
+	publicKey: string;
+	signature: string;
+	nonce: number;
 }) => {
 	return verifySignedMessage({publicKey, signature, nonce});
 };

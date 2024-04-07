@@ -1,5 +1,5 @@
 import { connection } from '@/utils/solanaNetwork';
-import { ParsedTransactionWithMeta } from '@solana/web3.js';
+import { ParsedTransactionWithMeta, RpcResponseAndContext, SignatureStatus } from '@solana/web3.js';
 import { increaseUserBalanceWithLamports, lowerUserBalanceWithLamports } from './userModule';
 import { getServiceClient } from '@/supabasedb';
 
@@ -140,7 +140,7 @@ const getTransactionTokenAmount = (
 const pollSignatureStatusUntillFinalized = async (
 	signature: string,
 	proccessingTime?: number
-) => {
+): Promise<RpcResponseAndContext<SignatureStatus>> => {
 	const processingTime = proccessingTime
 		? new Date().getTime() - proccessingTime
 		: new Date().getTime();

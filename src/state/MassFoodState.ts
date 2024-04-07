@@ -1,6 +1,6 @@
 import { Schema, type } from '@colyseus/schema';
-import { GameConfig } from '@/config/game-config';
 import { Target } from './TargetState';
+import { Circle, NodeGeometry } from '@timohausmann/quadtree-ts';
 
 export class MassFoodState extends Schema {
 	@type('string')
@@ -31,43 +31,25 @@ export class MassFoodState extends Schema {
 	y: number;
 
 	@type('number')
+	w: number;
+
+	@type('number')
+	h: number;
+
+	@type('number')
 	radius: number;
 
 	@type('number')
 	speed: number;
 
-	moveMass(mass) {
-		const deg = Math.atan2(mass.target.y, mass.target.x);
-		const deltaY = mass.speed * Math.sin(deg);
-		const deltaX = mass.speed * Math.cos(deg);
+	@type('number')
+	createdAt: number;
 
-		mass.speed -= 0.5;
-		
-		if (mass.speed < 0) {
-			mass.speed = 0;
-		}
-
-		if (!isNaN(deltaY)) {
-			mass.y += deltaY;
-		}
-
-		if (!isNaN(deltaX)) {
-			mass.x += deltaX;
-		}
-
-		const borderCalc = mass.radius + 5;
-
-		if (mass.x > GameConfig.gameWidth - borderCalc) {
-			mass.x = GameConfig.gameWidth - borderCalc;
-		}
-		if (mass.y > GameConfig.gameHeight - borderCalc) {
-			mass.y = GameConfig.gameHeight - borderCalc;
-		}
-		if (mass.x < borderCalc) {
-			mass.x = borderCalc;
-		}
-		if (mass.y < borderCalc) {
-			mass.y = borderCalc;
-		}
+	qtIndex(node: NodeGeometry) {
+		return Circle.prototype.qtIndex.call({
+			x: this.x,
+			y: this.y,
+			r: this.radius
+		}, node)
 	}
 }

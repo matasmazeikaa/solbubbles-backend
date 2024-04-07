@@ -1,20 +1,31 @@
 import { GameConfig } from "@/config/game-config";
 
-export const validNick = (nickname) => {
-	const regex = /^\w*$/;
-	return regex.exec(nickname) !== null;
+const getDistance = (
+	pointA: { x: number; y: number },
+	pointB: { x: number; y: number }
+) => {
+	return Math.sqrt((pointA.x - pointB.x) ** 2 + (pointA.y - pointB.y) ** 2);
 };
 
-export const toNumberSafe = (value) => {
+export const isCircleOverlapping = (
+	circleA: { x: number; y: number; r: number },
+	circleB: { x: number; y: number; r: number },
+	padding = 0
+) => {
+	return getDistance(circleA, circleB) < circleA.r + circleB.r + padding;
+};
+
+export const toNumberSafe = (value: string) => {
 	const num = parseInt(value, 10);
 	return isNaN(num) ? 0 : num;
 }
 
-export const round = (num: number, decimalPlaces = 0) => {
+export const round = (num: number, decimalPlaces = 0): number => {
     if (num < 0)
         return -round(-num, decimalPlaces);
 
     num = Math.round(Number(num + "e" + decimalPlaces));
+
     return Number(num + "e" + -decimalPlaces);
 }
 
@@ -24,29 +35,26 @@ export const splitNumberWithoutDecimals = (number: number) => {
 }
 
 // determine mass from radius of circle
-export const massToRadius = (mass) => 4 + Math.sqrt(mass) * 6;
+export const massToRadius = (mass: number) => 4 + Math.sqrt(mass) * 6;
 
 // overwrite Math.log function
 export const log = (() => {
 	const { log } = Math;
-	return (n, base) => log(n) / (base ? log(base) : 1);
+
+	return (n: number, base: number) => log(n) / (base ? log(base) : 1);
 })();
 
-// get the Euclidean distance between the edges of two shapes
-export const getDistance = (p1, p2) =>
-	Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2) - p1.radius - p2.radius;
-
-export const randomInRange = (from, to) =>
+export const randomInRange = (from: number, to: number) =>
 	Math.floor(Math.random() * (to - from)) + from;
 
 // generate a random position within the field of play
-export const randomPosition = (radius) => ({
+export const randomPosition = (radius: number) => ({
 	x: randomInRange(radius, GameConfig.gameWidth - radius),
 	y: randomInRange(radius, GameConfig.gameHeight - radius),
 	radius: radius,
 });
 
-export const uniformPosition = (points, radius) => {
+export const uniformPosition = (points: { x: number, y: number }[], radius: number) => {
 	let bestCandidate;
 	let maxDistance = 0;
 	const numberOfCandidates = 10;
@@ -77,16 +85,4 @@ export const uniformPosition = (points, radius) => {
 	}
 
 	return bestCandidate;
-};
-
-export const findIndex = (arr, id) => {
-	let len = arr.length;
-
-	while (len--) {
-		if (arr[len].id === id) {
-			return len;
-		}
-	}
-
-	return -1;
 };

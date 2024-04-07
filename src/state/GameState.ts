@@ -3,269 +3,330 @@ import { FoodState } from './FoodState';
 import { TopPlayerState } from './LeaderboardState';
 import { Player } from './PlayerState';
 import { VirusState } from './VirusState';
-import { massToRadius } from '@/utils/game-util';
-import { BotConfig, GameConfig } from '@/config/game-config';
-import { PlayerOrderMassState } from './PlayerOrderMassState';
-import SAT from 'sat';
-import SimpleQuadTree from 'simple-quadtree';
+import { isCircleOverlapping, massToRadius } from '@/utils/game-util';
+import { GameConfig } from '@/config/game-config';
 import { MassFoodState } from './MassFoodState';
 import { Target } from './TargetState';
+import { increaseUserKillCount } from '@/modules/userStatisticsModule';
+import { CellState } from './CellState';
+import { Circle, Quadtree } from '@timohausmann/quadtree-ts';
 
-const V = SAT.Vector;
-const C = SAT.Circle;
-
-const sqt = SimpleQuadTree(0, 0, GameConfig.gameWidth, GameConfig.gameHeight);
 
 export class GameState extends Schema {
 	@type({ map: Player })
 	players = new MapSchema<Player>();
 
-	@type([FoodState])
-	food = new ArraySchema<FoodState>();
+	@type({ map: Player })
+	bots = new MapSchema<Player>();
 
-	@type([VirusState])
-	virus = new ArraySchema<VirusState>();
+	@type({ map: FoodState })
+	food = new MapSchema<FoodState>();
 
-	@type([PlayerOrderMassState])
-	playerOrderMass = new ArraySchema<PlayerOrderMassState>();
+	@type({ map: MassFoodState })
+	massFood = new MapSchema<MassFoodState>();
 
-	@type([MassFoodState])
-	massFood = new ArraySchema<MassFoodState>();
+	@type({ map: VirusState })
+	virus = new MapSchema<VirusState>();
 
 	@type([TopPlayerState])
 	leaderboard = new ArraySchema<TopPlayerState>();
 
-	playerCollisions = [];
+	massFoodQuadTree = new Quadtree({
+		x: 0,
+		y: 0,
+		width: Number(GameConfig.gameWidth),
+		height: Number(GameConfig.gameHeight)
+	});
 
-	deleteFood(f) {
-		this.food.splice(f, 1);
+	virusQuadTree = new Quadtree({
+		x: 0,
+		y: 0,
+		width: Number(GameConfig.gameWidth),
+		height: Number(GameConfig.gameHeight)
+	});
+
+	foodQuadTree = new Quadtree({
+		x: 0,
+		y: 0,
+		width: Number(GameConfig.gameWidth),
+		height: Number(GameConfig.gameHeight)
+	});
+
+	cellQuadTree = new Quadtree({
+		x: 0,
+		y: 0,
+		width: Number(GameConfig.gameWidth),
+		height: Number(GameConfig.gameHeight)
+	});
+
+	deleteFood(food: FoodState) {
+		this.food.delete(food.id);
 	}
 
-	collisionCheck(collision, player) {
-		const collisionUserBId = collision.bUser.createdPlayerId;
+	get foodLength() {
+		return this.food.entries.length;
+	}
 
-		const isUserFound = !!this.players[collisionUserBId].cells.find(
-			(cell) => cell.id === collision.bUser.id
+	get playerCells() {
+		return Array.from(this.players.values()).map((player) => player.cells);
+	}
+
+	collideCells(aCell: CellState, bCell: Circle<CellState>, player: Player) {
+		const bPlayer = this.players.get(bCell.data.createdPlayerId);
+
+		if (!bPlayer) {
+			return;
+		}
+
+		if (bPlayer.cells.size > 1) {
+			bPlayer.removeCell(bCell);
+		} else {
+			bPlayer.removeCell(bCell);
+			this.players.delete(bCell.data.createdPlayerId);
+
+			bPlayer.client?.send('death', player);
+
+			if (player.type === 'player') {
+				increaseUserKillCount({
+					publicKey: player.publicKey,
+					kills: 1
+				});
+			}
+		}
+
+		player.absorbCell(aCell, bCell.data);
+		this.cellQuadTree.remove(bCell);
+	}
+
+	checkCollision(
+		cell: CellState,
+		collidingCell: Circle<CellState>,
+		player: Player
+	) {
+		const isCollided = isCircleOverlapping(
+			{ x: cell.x, y: cell.y, r: cell.radius },
+			{ x: collidingCell.x, y: collidingCell.y, r: collidingCell.r }
 		);
 
-		if (isUserFound) {
-			if (collision.bUser.type === 'bot') {
-				// if (this.bots[collisionUserBId].cells.length > 1) {
-				// 	this.bots[collisionUserBId].massTotal -=
-				// 		collision.bUser.mass;
-				// 	this.bots[collisionUserBId].cells.splice(
-				// 		collision.bUser.num,
-				// 		1
-				// 	);
-				// } else {
-				// 	this.bots.splice(collisionUserBId, 1);
-				// }
-			} else {
-				if (this.players[collisionUserBId].cells.length > 1) {
-					this.players[collisionUserBId].massTotal -=
-						collision.bUser.mass;
-					this.players[collisionUserBId].cells.splice(
-						collision.bUser.num,
-						1
-					);
-				} else {
-					this.players[collisionUserBId].client.send(
-						'death',
-						this.players[collisionUserBId]
-					);
-					this.players.delete(collisionUserBId);
-				}
-			}
+		if (!isCollided) return;
 
-			player.massTotal += collision.bUser.mass;
-			player.lastActionTick = Date.now();
+		const isOverlapping =
+			cell.radius >
+			Math.sqrt(
+				(cell.x - collidingCell.data.x) ** 2 +
+					(cell.y - collidingCell.data.y) ** 2
+			) *
+				1.2;
 
-			collision.aUser.mass += collision.bUser.mass;
-			collision.aUser.splTokens += collision.bUser.splTokens;
+		const isMassBigger = cell.mass > collidingCell.data.mass * 1.1;
+
+		if (isOverlapping && isMassBigger) {
+			this.collideCells(cell, collidingCell, player);
 		}
 	}
 
-	check(user, playerCircle, currentCell, playerId) {
-		for (var i = 0; i < user.cells.length; i++) {
-			if (!user.hasImmunity && user.id !== playerId) {
-				var response = new SAT.Response();
-				var collided = SAT.testCircleCircle(
-					playerCircle,
-					new C(
-						new V(user.cells[i].x, user.cells[i].y),
-						user.cells[i].radius
-					),
-					response
-				);
+	tickMassFoodCollision(mass: MassFoodState) {
+		const nearbyViruses = this.virusQuadTree.retrieve(
+			mass
+		) as Circle<VirusState>[];
 
-				if (collided) {
-					response.aUser = currentCell;
-					response.bUser = {
-						id: user.cells[i].id,
-						createdPlayerId: user.id,
-						type: user.type,
-						x: user.cells[i].x,
-						y: user.cells[i].y,
-						num: i,
-						mass: user.cells[i].mass,
-						splTokens: user.cells[i].splTokens
-					};
+		for (let i = 0; i < nearbyViruses.length; i++) {
+			const virus = nearbyViruses[i];
 
-					if (
-						response.aUser.mass > response.bUser.mass * 1.1 &&
-						response.aUser.radius >
-							Math.sqrt(
-								(response.aUser.x - response.bUser.x) ** 2 +
-									(response.aUser.y - response.bUser.y) ** 2
-							) *
-								1.75
-					) {
-						this.collisionCheck(response, user);
-					}
-				}
-			}
-		}
-		return true;
-	}
-
-	funcFood(food, playerCircle) {
-		return SAT.pointInCircle(new V(food.x, food.y), playerCircle);
-	}
-
-	virusEatMassFood(mass, virusCircle) {
-		return SAT.pointInCircle(new V(mass.x, mass.y), virusCircle);
-	}
-
-	eatMass(mass, player, playerCircle, currentCell) {
-		if (SAT.pointInCircle(new V(mass.x, mass.y), playerCircle)) {
-			if (mass.createdPlayerId === player.id && mass.speed > 0) {
-				return false;
-			}
-
-			if (currentCell.mass > mass.masa * 1.1) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	tickMassFoodCollision() {
-		for (let i = 0; i < this.massFood.length; i++) {
-			const currentMassFood = this.massFood[i];
-
-			const massCircle = new C(
-				new V(currentMassFood.x, currentMassFood.y),
-				currentMassFood.radius
+			// if (this.virusEatMassFood(mass, virus.data)) {
+			const isCollided = isCircleOverlapping(
+				{ x: mass.x, y: mass.y, r: mass.radius },
+				{ x: virus.x, y: virus.y, r: virus.r },
+				-mass.radius
 			);
 
-			const virusCollision = this.virus
-				.map((mass) => this.virusEatMassFood(mass, massCircle))
-				.reduce((a, b, c) => (b ? a.concat(c) : a), []);
-
-			for (let m = 0; m < virusCollision.length; m++) {
-				const colidedVirus = this.virus[virusCollision[m]];
+			if (isCollided) {
+				const colidedVirus = this.virus.get(virus.data.id);
 
 				// Move virus to the direction of the shooted mass food
-				const x = currentMassFood.x - colidedVirus.x + currentMassFood.target.x;
-				const y = currentMassFood.y - colidedVirus.y + currentMassFood.target.y;
+				const x = mass.x - colidedVirus.x + mass.target.x;
+				const y = mass.y - colidedVirus.y + mass.target.y;
+
 				colidedVirus.target = new Target().assign({
 					x,
 					y
-				})
+				});
+
 				// setting the speed of the virus for movement
 				colidedVirus.speed = 25;
 
 				// removing the mass food from the game as it has been eaten by the virus
-				this.massFood.splice(i, 1);
+				this.massFood.delete(mass.id);
+				this.massFoodQuadTree.remove(mass);
 			}
 		}
 	}
 
-	tickPlayer(player: Player) {
-		player.move();
+	handleEatFood(cell: CellState, player: Player) {
+		let foodEatenCount = 0;
+		let food: Circle<CellState>;
 
-		// Check mass food colision
+		const neardbyFoods = this.foodQuadTree.retrieve(cell) as Circle<CellState>[];
 
-		this.tickMassFoodCollision();
+		for (let i = 0; i < neardbyFoods.length; i++) {
+			food = neardbyFoods[i];
 
-		for (
-			let playerCellIndex = 0;
-			playerCellIndex < player.cells.length;
-			playerCellIndex++
-		) {
-			const currentCell = player.cells[playerCellIndex];
-
-			const playerCircle = new C(
-				new V(currentCell.x, currentCell.y),
-				currentCell.radius
+			const isOverlapping = isCircleOverlapping(
+				{ x: cell.x, y: cell.y, r: cell.radius },
+				{ x: food.data.x, y: food.data.y, r: food.data.radius },
+				-food.r * 2
 			);
 
-			const foodEaten = this.food
-				.map((food) => this.funcFood(food, playerCircle))
-				.reduce((a, b, c) => (b ? a.concat(c) : a), []);
-
-			foodEaten.forEach((food) => this.deleteFood(food));
-
-			const massEaten = this.massFood
-				.map((mass) =>
-					this.eatMass(mass, player, playerCircle, currentCell)
-				)
-				.reduce((a, b, c) => (b ? a.concat(c) : a), []);
-
-			const [virusCollision] = this.virus
-				.map((food) => this.funcFood(food, playerCircle))
-				.reduce((a, b, c) => (b ? a.concat(c) : a), []);
-
-			if (
-				virusCollision > 0 &&
-				currentCell.mass > this.virus[virusCollision].mass
-			) {
-				if (BotConfig.ACTIVE) {
-					return;
-				}
-
-				this.players[player.id].virusSplitCell(currentCell);
-
-				this.virus.splice(virusCollision, 1);
+			if (isOverlapping) {
+				this.food.delete(food.data.id);
+				this.foodQuadTree.remove(food);
+				foodEatenCount++;
 			}
-
-			let masaGanada = 0;
-
-			for (let m = 0; m < massEaten.length; m++) {
-				masaGanada += this.massFood[massEaten[m]].masa;
-
-				this.massFood.splice(massEaten[m], 1);
-
-				for (let n = 0; n < massEaten.length; n++) {
-					if (massEaten[m] < massEaten[n]) {
-						massEaten[n]--;
-					}
-				}
-			}
-
-			if (typeof currentCell.speed === 'undefined') {
-				currentCell.speed = 6.25;
-			}
-
-			masaGanada += foodEaten.length * GameConfig.foodMass;
-
-			if (masaGanada > 0) {
-				currentCell.mass += masaGanada;
-				player.massTotal += masaGanada;
-			}
-
-			currentCell.radius = massToRadius(currentCell.mass);
-			playerCircle.r = currentCell.radius;
-
-			sqt.clear();
-
-			this.players.forEach(sqt.put);
-
-			sqt.get(player, (user) =>
-				this.check(user, playerCircle, currentCell, player.id)
-			);
 		}
+
+		const newMass = foodEatenCount * GameConfig.foodMass;
+
+		if (newMass === 0) return;
+
+		cell.mass += newMass;
+		cell.radius = massToRadius(cell.mass);
+		player.massTotal += newMass;
+	}
+
+	handleEatMassFood(cell: CellState, player: Player) {
+		let massEatenCount = 0;
+
+		const nearbyMassFood = this.massFoodQuadTree.retrieve(
+			cell
+		) as Circle<MassFoodState>[];
+
+		for (let i = 0; i < nearbyMassFood.length; i++) {
+			const mass = nearbyMassFood[i];
+
+			const isColliding = isCircleOverlapping(
+				{ x: cell.x, y: cell.y, r: cell.radius },
+				{ x: mass.x, y: mass.y, r: mass.r },
+				-mass.r
+			);
+
+			if (Date.now() - mass.data.createdAt > 1000 && isColliding) {
+				this.massFood.delete(mass.data.id);
+				this.massFoodQuadTree.remove(mass);
+				massEatenCount += mass.data.masa;
+			}
+		}
+
+		cell.mass += massEatenCount;
+		cell.radius = massToRadius(cell.mass);
+		player.massTotal += massEatenCount;
+	}
+
+	handleVirusCollision(cell: CellState, player: Player) {
+		const nearbyViruses = this.virusQuadTree.retrieve(
+			cell
+		) as Circle<VirusState>[];
+
+		for (let i = 0; i < nearbyViruses.length; i++) {
+			const nearbyVirus = nearbyViruses[i];
+
+			const isOverlapping = isCircleOverlapping(
+				{ x: cell.x, y: cell.y, r: cell.radius },
+				{
+					x: nearbyVirus.x,
+					y: nearbyVirus.y,
+					r: nearbyVirus.r
+				},
+				-cell.radius
+			);
+
+			if (isOverlapping) {
+				if (cell.mass > nearbyVirus.data.mass) {
+					player.virusSplitCell(cell);
+
+					this.virus.delete(nearbyVirus.data.id);
+					this.virusQuadTree.remove(nearbyVirus);
+				}
+			}
+		}
+	}
+
+	handleCellCollision(cell: CellState, player: Player) {
+		const nearbyCells = this.cellQuadTree.retrieve(cell) as Circle<CellState>[];
+
+		for (let i = 0; i < nearbyCells.length; i++) {
+			const nearbyCell = nearbyCells[i];
+
+			const isOwnCell =
+				cell.createdPlayerId === nearbyCell.data.createdPlayerId;
+			const isSameCell = cell.id === nearbyCell.data.id;
+
+			if (isOwnCell && !isSameCell) {
+				this.findBestOwnCellsPosition(cell, nearbyCell, player);
+			}
+
+			if (!isOwnCell && !isSameCell) {
+				this.checkCollision(cell, nearbyCell, player);
+			}
+		}
+	}
+
+	findBestOwnCellsPosition(
+		cell: CellState,
+		nearbyCell: Circle<CellState>,
+		player: Player
+	) {
+		const dx = nearbyCell.x - cell.x;
+		const dy = nearbyCell.y - cell.y;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+		const minDist = cell.radius + nearbyCell.data.radius;
+
+		const isMergeTimePassed =
+			Date.now() - 1000 * GameConfig.mergeTimer > player.lastSplit;
+
+		const radiusTotal = cell.radius + nearbyCell.data.radius;
+
+		if (distance < minDist && !isMergeTimePassed) {
+			// Calculate the angle of the collision
+			const angle = Math.atan2(dy, dx);
+
+			// Calculate the overlap between the cells
+			const overlap = minDist - distance;
+
+			if (Date.now() - player.lastSplit > 500) {
+				cell.x -= overlap * Math.cos(angle);
+				cell.y -= overlap * Math.sin(angle);
+			}
+		} else if (distance < radiusTotal / 1.75) {
+			cell.mass += nearbyCell.data.mass;
+			cell.splTokens += nearbyCell.data.splTokens;
+			cell.radius = massToRadius(cell.mass);
+			player.cells.delete(nearbyCell.data.id);
+			this.cellQuadTree.remove(nearbyCell);
+		}
+	}
+
+	tickPlayer(player: Player) {
+		let x = 0;
+		let y = 0;
+
+		// if (player.type === 'bot') {
+		// 	return;
+		// }
+
+		player.cells.forEach((cell) => {
+			player.move(cell);
+
+			x += cell.x;
+			y += cell.y;
+
+			this.handleEatFood(cell, player);
+			this.handleEatMassFood(cell, player);
+			this.handleVirusCollision(cell, player);
+			this.handleCellCollision(cell, player);
+		});
+
+		player.x = x / player.cells.size;
+		player.y = y / player.cells.size;
 	}
 
 	gameLoop() {
@@ -305,54 +366,104 @@ export class GameState extends Schema {
 		}
 	}
 
-	moveMass(mass) {
-		const deg = Math.atan2(mass.target.y, mass.target.x);
-		const deltaY = mass.speed * Math.sin(deg);
-		const deltaX = mass.speed * Math.cos(deg);
+	tickEntity(entity: MassFoodState | VirusState) {
+		if (entity.speed === 0) {
+			return;
+		}
 
-		mass.speed -= 0.5;
+		const deg = Math.atan2(entity.target.y, entity.target.x);
+		const deltaY = entity.speed * Math.sin(deg);
+		const deltaX = entity.speed * Math.cos(deg);
 
-		if (mass.speed < 0) {
-			mass.speed = 0;
+		entity.speed -= 0.5;
+
+		if (entity.speed < 0) {
+			entity.speed = 0;
 		}
 
 		if (!isNaN(deltaY)) {
-			mass.y += deltaY;
+			entity.y += deltaY;
 		}
 
 		if (!isNaN(deltaX)) {
-			mass.x += deltaX;
+			entity.x += deltaX;
 		}
 
-		const borderCalc = mass.radius + 5;
+		const borderCalc = entity.radius + 5;
 
-		if (mass.x > GameConfig.gameWidth - borderCalc) {
-			mass.x = GameConfig.gameWidth - borderCalc;
+		if (entity.x > GameConfig.gameWidth - borderCalc) {
+			entity.x = GameConfig.gameWidth - borderCalc;
 		}
-		if (mass.y > GameConfig.gameHeight - borderCalc) {
-			mass.y = GameConfig.gameHeight - borderCalc;
+		if (entity.y > GameConfig.gameHeight - borderCalc) {
+			entity.y = GameConfig.gameHeight - borderCalc;
 		}
-		if (mass.x < borderCalc) {
-			mass.x = borderCalc;
+		if (entity.x < borderCalc) {
+			entity.x = borderCalc;
 		}
-		if (mass.y < borderCalc) {
-			mass.y = borderCalc;
+		if (entity.y < borderCalc) {
+			entity.y = borderCalc;
 		}
 	}
 
+	tickMass(mass: MassFoodState) {
+		this.tickEntity(mass);
+
+		this.tickMassFoodCollision(mass);
+	}
+
+	tickVirus(mass: VirusState) {
+		this.tickEntity(mass);
+	}
+
 	moveLoop() {
+		// const performanceStart = performance.now();
+
+		this.cellQuadTree.clear();
+		this.playerCells.forEach((cells) => {
+			cells.forEach((cell) => {
+				const treeCircle = new Circle({
+					x: cell.x,
+					y: cell.y,
+					r: cell.radius,
+					data: cell
+				});
+
+				this.cellQuadTree.insert(treeCircle);
+			});
+		});
+
+		this.virusQuadTree.clear();
+		this.virus.forEach((virus) => {
+			const treeCircle = new Circle({
+				x: virus.x,
+				y: virus.y,
+				r: virus.radius,
+				data: virus
+			});
+
+			this.virusQuadTree.insert(treeCircle);
+		});
+
+		this.massFoodQuadTree.clear();
+		this.massFood.forEach((mass) => {
+			const treeCircle = new Circle({
+				x: mass.x,
+				y: mass.y,
+				r: mass.radius,
+				data: mass
+			});
+
+			this.massFoodQuadTree.insert(treeCircle);
+		});
+
 		this.players.forEach((player) => {
 			this.tickPlayer(player);
 		});
 
-		this.massFood
-			.filter((mass) => mass.speed > 0)
-			.forEach((mass) => {
-				this.moveMass(mass);
-			});
+		this.massFood.forEach((mass) => {
+			this.tickMass(mass);
+		});
 
-		this.virus
-			.filter((virus) => virus.speed > 0)
-			.forEach((virus) => this.moveMass(virus));
+		this.virus.forEach((virus) => this.tickVirus(virus));
 	}
 }

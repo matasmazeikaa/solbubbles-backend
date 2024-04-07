@@ -27,6 +27,35 @@ export type Database = {
         }
         Relationships: []
       }
+      user_statistics: {
+        Row: {
+          id: string
+          killCount: number
+          publicKey: string
+          totalTokenWinnings: number | null
+        }
+        Insert: {
+          id?: string
+          killCount?: number
+          publicKey: string
+          totalTokenWinnings?: number | null
+        }
+        Update: {
+          id?: string
+          killCount?: number
+          publicKey?: string
+          totalTokenWinnings?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_user_statistics_publicKey_fkey"
+            columns: ["publicKey"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["publicKey"]
+          },
+        ]
+      }
       users: {
         Row: {
           auth: Json | null
