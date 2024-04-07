@@ -32,8 +32,6 @@ const gameServer = new Server({
 	server: createServer(app)
 });
 
-gameServer.simulateLatency(100);
-
 const ROOM = {
 	gameRoom1: {
 		id: 'game-room-1',

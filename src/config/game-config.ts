@@ -4,7 +4,7 @@ export enum GameConfig {
 	fireFood = 10,
 	limitSplit = 16,
 	startingSpeed = 6.25,
-	startingPlayerMass = 100,
+	startingPlayerMass = 10,
 	defaultPlayerMass = 10,
 	gameWidth = 5000,
 	gameHeight = 5000,
@@ -16,8 +16,8 @@ export enum GameConfig {
 	newPlayerInitialPosition = 'farthest',
 	massLossRate = 1,
 	minMassLoss = 50,
-	mergeTimer = 5,
-	cashoutCooldown = 0,
+	mergeTimer = 20,
+	cashoutCooldown = 30,
 	immunityTimer = 10,
 	maxRoomUserAmount = 100
 };
