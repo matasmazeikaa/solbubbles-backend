@@ -4,31 +4,31 @@ import {
 	USER_WITH_ADDRESS_NOT_FOUND
 } from '@/error-codes';
 import { getServiceClient } from '@/supabasedb';
-import {z} from 'zod';
+import { z } from 'zod';
 
 export const lowerUserBalanceWithLamports = async (
 	publicKey: string,
 	amountToLower: number
 ) => {
-	const { data: user } = await getServiceClient()
-		.from('users')
-		.select('*')
-		.eq('publicKey', publicKey)
-		.single();
-
-	if (!user) {
-		throw Error(USER_WITH_ADDRESS_NOT_FOUND);
-	}
-
-	if (Number(amountToLower) > Number(user.depositedSplLamports)) {
-		throw Error(USER_DEPOSITED_BALANCE_NOT_ENOUGH);
-	}
-
-	const newAmount = `${
-		Number(user.depositedSplLamports) - Number(amountToLower)
-	}`;
-
 	try {
+		const { data: user } = await getServiceClient()
+			.from('users')
+			.select('*')
+			.eq('publicKey', publicKey)
+			.single();
+
+		if (!user) {
+			throw Error(USER_WITH_ADDRESS_NOT_FOUND);
+		}
+
+		if (Number(amountToLower) > Number(user.depositedSplLamports)) {
+			throw Error(USER_DEPOSITED_BALANCE_NOT_ENOUGH);
+		}
+
+		const newAmount = `${
+			Number(user.depositedSplLamports) - Number(amountToLower)
+		}`;
+
 		const { data: newUser } = await getServiceClient()
 			.from('users')
 			.update({ depositedSplLamports: newAmount })
@@ -49,27 +49,26 @@ export const increaseUserBalanceWithLamports = async ({
 	publicKey: string;
 	amountToIncrease: number;
 }) => {
-
-    z.object({
-        publicKey: z.string(),
-        amountToIncrease: z.number()
-    }).parse({ publicKey, amountToIncrease });
-
-	const { data: user } = await getServiceClient()
-		.from('users')
-		.select('*')
-		.eq('publicKey', publicKey)
-		.single();
-
-	if (!user) {
-		throw Error(USER_WITH_ADDRESS_NOT_FOUND);
-	}
-
-	const newAmount = `${
-		Number(user.depositedSplLamports) + Number(amountToIncrease)
-	}`;
-
 	try {
+		z.object({
+			publicKey: z.string(),
+			amountToIncrease: z.number()
+		}).parse({ publicKey, amountToIncrease });
+
+		const { data: user } = await getServiceClient()
+			.from('users')
+			.select('*')
+			.eq('publicKey', publicKey)
+			.single();
+
+		if (!user) {
+			throw Error(USER_WITH_ADDRESS_NOT_FOUND);
+		}
+
+		const newAmount = `${
+			Number(user.depositedSplLamports) + Number(amountToIncrease)
+		}`;
+
 		const { data: newUser } = await getServiceClient()
 			.from('users')
 			.update({ depositedSplLamports: newAmount })
@@ -83,8 +82,6 @@ export const increaseUserBalanceWithLamports = async ({
 	}
 };
 
-
-
 export const increaseUserBalanceWithTokens = async ({
 	publicKey,
 	amountToIncrease
@@ -92,13 +89,10 @@ export const increaseUserBalanceWithTokens = async ({
 	publicKey: string;
 	amountToIncrease: number;
 }) => {
-	const key = publicKey
-
-	console.log('key', key)
-	console.log('amountToIncrease', amountToIncrease)
+	const key = publicKey;
 
 	return await increaseUserBalanceWithLamports({
 		publicKey: key,
 		amountToIncrease: amountToIncrease * TOKEN_CONFIG.LAMPORTS_PER_TOKEN
 	});
-}
+};

@@ -4,7 +4,7 @@ export enum GameConfig {
 	fireFood = 10,
 	limitSplit = 16,
 	startingSpeed = 6.25,
-	startingPlayerMass = 10,
+	startingPlayerMass = 200,
 	defaultPlayerMass = 10,
 	gameWidth = 5000,
 	gameHeight = 5000,

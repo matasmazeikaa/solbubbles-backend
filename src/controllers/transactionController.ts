@@ -3,7 +3,7 @@ import { body } from 'express-validator';
 import { Keypair, Transaction } from '@solana/web3.js';
 import { authHandler } from '@/middleware/auth.middleware';
 import { toNumberSafe } from '@/utils/game-util';
-import { processTransaction } from '@/modules/transactionModule';
+import { getProcessingTransaction, processTransaction, removeProcessingTransaction } from '@/modules/transactionModule';
 import { getServiceClient } from '@/supabasedb';
 
 const getGamePoolAuthorityWallet = () => {
@@ -75,6 +75,16 @@ transactionController.get(
 	async (req: any, res) => {
 		const { transactionSignature } = req.params;
 
+		const processingTransaction = getProcessingTransaction(transactionSignature);
+
+		if (processingTransaction?.error) {
+			removeProcessingTransaction(transactionSignature);
+
+			return res
+				.status(400)
+				.json({ errorMessage: processingTransaction.error });
+		}
+
 		const { data: transaction } = await getServiceClient()
 			.from('transactions')
 			.select('*')
@@ -111,7 +121,7 @@ transactionController.post(
 				transactionSignature: transactionHash
 			});
 		} catch (error) {
-			console.log('error')
+			console.log('error', error.message)
 			return res.status(400).json({
 				errorMessage: error
 			});

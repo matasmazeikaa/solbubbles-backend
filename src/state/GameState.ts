@@ -114,9 +114,9 @@ export class GameState extends Schema {
 			cell.radius >
 			Math.sqrt(
 				(cell.x - collidingCell.data.x) ** 2 +
-					(cell.y - collidingCell.data.y) ** 2
+				(cell.y - collidingCell.data.y) ** 2
 			) *
-				1.2;
+			1.2;
 
 		const isMassBigger = cell.mass > collidingCell.data.mass * 1.1;
 
@@ -236,7 +236,7 @@ export class GameState extends Schema {
 					y: nearbyVirus.y,
 					r: nearbyVirus.r
 				},
-				-cell.radius
+				-nearbyVirus.r
 			);
 
 			if (isOverlapping) {

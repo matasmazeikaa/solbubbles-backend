@@ -1,7 +1,15 @@
 import { connection } from '@/utils/solanaNetwork';
-import { ParsedTransactionWithMeta, RpcResponseAndContext, SignatureStatus } from '@solana/web3.js';
-import { increaseUserBalanceWithLamports, lowerUserBalanceWithLamports } from './userModule';
+import {
+	ParsedTransactionWithMeta,
+	RpcResponseAndContext,
+	SignatureStatus
+} from '@solana/web3.js';
+import {
+	increaseUserBalanceWithLamports,
+	lowerUserBalanceWithLamports
+} from './userModule';
 import { getServiceClient } from '@/supabasedb';
+import { logger } from 'logger';
 
 export interface Transaction {
 	blockTime: number;
@@ -92,8 +100,24 @@ export interface MessageInstruction {
 	stackHeight: null;
 }
 
-let transactionsBeingProcessed: string[] = [];
+export let transactionsBeingProcessed: {
+	transactionSignature: string;
+	error?: string;
+}[] = [];
 
+export const getProcessingTransaction = (
+	transactionSignature: string
+): { transactionSignature: string; error?: string } | null =>
+	transactionsBeingProcessed.find(
+		(transaction) => transaction.transactionSignature === transactionSignature
+	);
+
+
+export const removeProcessingTransaction = (transactionSignature: string) => {
+	transactionsBeingProcessed = transactionsBeingProcessed.filter(
+		(transaction) => transaction.transactionSignature !== transactionSignature
+	);
+}
 // 2 minutes
 // const MAX_PROCESSING_TIME = 120000;
 
@@ -118,16 +142,20 @@ const getTransactionTokenAmount = (
 
 	const transferInstructions = innerInstructions.find((innerInstruction) => {
 		return innerInstruction.instructions.some(
-			(instruction) => 'parsed' in instruction && instruction.parsed.type === 'transfer'
+			(instruction) =>
+				'parsed' in instruction &&
+				instruction.parsed.type === 'transfer'
 		);
 	});
 
 	if (transferInstructions) {
 		const transferInstruction = transferInstructions.instructions.find(
-			(instruction) => 'parsed' in instruction && instruction.parsed.type === 'transfer'
+			(instruction) =>
+				'parsed' in instruction &&
+				instruction.parsed.type === 'transfer'
 		);
 
-		if (!transferInstruction  || !('parsed' in transferInstruction)) {
+		if (!transferInstruction || !('parsed' in transferInstruction)) {
 			return null;
 		}
 
@@ -137,26 +165,35 @@ const getTransactionTokenAmount = (
 	return null;
 };
 
+const TRANSACTION_STATUS_TIMEOUT = 60000 * 2;
 const pollSignatureStatusUntillFinalized = async (
 	signature: string,
-	proccessingTime?: number
+	lastTime?: number
 ): Promise<RpcResponseAndContext<SignatureStatus>> => {
-	const processingTime = proccessingTime
-		? new Date().getTime() - proccessingTime
-		: new Date().getTime();
-
+	console.log(Date.now() - lastTime, 'last time');
 	try {
-		const status = await connection.getSignatureStatus(signature);
+		const status = await connection.getSignatureStatus(signature, {
+			searchTransactionHistory: true
+		});
 
 		if (status.value?.confirmationStatus === 'finalized') {
 			return status;
 		}
 
+		if (lastTime && Date.now() - lastTime >= TRANSACTION_STATUS_TIMEOUT) {
+			throw new Error(
+				'Transaction timeout reached. If your transaction shows as success on Solana Explorer, please contact support.'
+			);
+		}
+
 		await new Promise((resolve) => setTimeout(resolve, 5000));
 
-		return pollSignatureStatusUntillFinalized(signature, processingTime);
+		return pollSignatureStatusUntillFinalized(
+			signature,
+			lastTime || Date.now()
+		);
 	} catch (error) {
-		throw new Error('Error polling signature status');
+		throw new Error((error as string) || 'Error polling signature status');
 	}
 };
 
@@ -178,11 +215,19 @@ export const processTransaction = async ({
 			throw new Error('Transaction already processed');
 		}
 
-		if (transactionsBeingProcessed.includes(transactionSignature)) {
+		const proccessingtransaction = getProcessingTransaction(transactionSignature)
+
+		if (proccessingtransaction?.error) {
+			throw new Error(proccessingtransaction.error);
+		}
+
+		if (proccessingtransaction) {
 			throw new Error('Transaction already being processed');
 		}
 
-		transactionsBeingProcessed.push(transactionSignature);
+		transactionsBeingProcessed.push({
+			transactionSignature
+		});
 
 		const status = await pollSignatureStatusUntillFinalized(
 			transactionSignature
@@ -205,9 +250,11 @@ export const processTransaction = async ({
 			throw new Error('Transaction amount not found');
 		}
 
-		const transactionToSave = getServiceClient().from('transactions').insert({
-			transactionSignature
-		})
+		const transactionToSave = getServiceClient()
+			.from('transactions')
+			.insert({
+				transactionSignature
+			});
 
 		if (isTransactionTypeDepositSplTokens(parsedTransaction)) {
 			return Promise.all([
@@ -215,7 +262,7 @@ export const processTransaction = async ({
 					publicKey,
 					amountToIncrease: transactionAmount
 				}),
-				transactionToSave,
+				transactionToSave
 			]);
 		}
 
@@ -227,14 +274,28 @@ export const processTransaction = async ({
 		}
 
 		transactionsBeingProcessed = transactionsBeingProcessed.filter(
-			(transaction) => transaction !== transactionSignature
+			(transaction) => transaction.transactionSignature !== transactionSignature
 		);
 
 		return null;
 	} catch (error) {
-		transactionsBeingProcessed = transactionsBeingProcessed.filter(
-			(transaction) => transaction !== transactionSignature
+		// tag transaction with erorr message
+		transactionsBeingProcessed = transactionsBeingProcessed.map(
+			(transaction) => {
+				if (transaction.transactionSignature === transactionSignature) {
+					return {transactionSignature, error: `${transaction.transactionSignature} - ${error}`};
+				}
+
+				return transaction;
+			}
 		);
-		throw new Error(error as string);
+
+		const errorMessage = (error as Error).message || 'Error processing transaction';
+
+		logger.error({
+			message: errorMessage,
+			transactionSignature,
+			error: error as Error
+		});
 	}
 };

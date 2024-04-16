@@ -16,7 +16,6 @@ import { toNumberSafe } from '@/utils/game-util';
 import { getServiceClient } from '@/supabasedb';
 import { TOKEN_CONFIG } from '@/constants';
 import { increaseUserTotalWinnings } from '@/modules/userStatisticsModule';
-
 export class GameRoom extends Room<GameState> {
 	@type('number')
 	roomSplTokenEntryFee: number;
@@ -32,6 +31,7 @@ export class GameRoom extends Room<GameState> {
 			throw new ServerError(e.statusCode, e.message);
 		}
 	}
+
 
 	async handleUserRoomEnter(jwtToken: string) {
 		const decodedData = jwt.verify(jwtToken, process.env.JWT_SECRET) as {
