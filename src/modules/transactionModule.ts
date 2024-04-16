@@ -297,5 +297,7 @@ export const processTransaction = async ({
 			transactionSignature,
 			error: error as Error
 		});
+
+		throw Error(errorMessage);
 	}
 };

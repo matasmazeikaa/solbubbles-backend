@@ -88,8 +88,8 @@ export const rooms = [
 		.setMaxListeners(100)
 ];
 
-gameServer.onShutdown((error) => {
-	logger.error('Server went down', error);
+gameServer.onShutdown(() => {
+	logger.error('Server went down');
 });
 
 process.on('exit', (code) => {
