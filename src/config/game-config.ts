@@ -16,8 +16,8 @@ export enum GameConfig {
 	newPlayerInitialPosition = 'farthest',
 	massLossRate = 1,
 	minMassLoss = 50,
-	mergeTimer = 20,
-	cashoutCooldown = 30,
+	mergeTimer = 4,
+	cashoutCooldown = 5,
 	immunityTimer = 10,
 	maxRoomUserAmount = 100
 };
@@ -31,7 +31,7 @@ export enum VirusConfig {
 }
 
 export const BotConfig = {
-	ACTIVE: false,
+	ACTIVE: true,
 	MAX_BOT: 40,
 	SPEED: 50,
 	startingSpeed: 6.25,

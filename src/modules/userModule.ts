@@ -96,3 +96,15 @@ export const increaseUserBalanceWithTokens = async ({
 		amountToIncrease: amountToIncrease * TOKEN_CONFIG.LAMPORTS_PER_TOKEN
 	});
 };
+
+export const lowerUserBalanceWithTokens = async ({
+	publicKey,
+	amountToLower
+}: {
+	publicKey: string;
+	amountToLower: number;
+}) => {
+	const key = publicKey;
+
+	return await lowerUserBalanceWithLamports(key, amountToLower * TOKEN_CONFIG.LAMPORTS_PER_TOKEN);
+}

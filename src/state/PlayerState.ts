@@ -106,7 +106,7 @@ export class Player extends Schema {
 			mass: Number(GameConfig.startingPlayerMass),
 			x: this.x,
 			y: this.y,
-			w: this.radius * 2,
+						w: this.radius * 2,
 			h: this.radius * 2,
 			type: this.type,
 			radius: this.radius,
@@ -185,7 +185,7 @@ export class Player extends Schema {
 			mass: cell.mass,
 			x: cell.x,
 			y: cell.y,
-			w: cell.radius * 2,
+						w: cell.radius * 2,
 			h: cell.radius * 2,
 			radius: cell.radius,
 			type: this.type,
@@ -261,7 +261,9 @@ export class Player extends Schema {
 	}
 
 	move(cell: CellState) {
+		
 		if (cell.type === 'bot') {
+			return;
 			this.moveBot();
 		}
 
@@ -332,6 +334,11 @@ export class Player extends Schema {
 				cell.radius = massToRadius(cell.mass);
 				this.massTotal -= masa;
 				this.lastActionTick = Date.now();
+				
+				const deg = Math.atan2(this.target.y, this.target.x);
+				const deltaY = cell.radius * Math.sin(deg);
+				const deltaX = cell.radius * Math.cos(deg);
+		
 
 				const massRadius = massToRadius(masa);
 				const mass = new MassFoodState().assign({
@@ -343,8 +350,8 @@ export class Player extends Schema {
 						x: this.x - cell.x + this.target.x,
 						y: this.y - cell.y + this.target.y
 					}),
-					x: cell.x,
-					y: cell.y,
+					x: cell.x + deltaX,
+					y: cell.y + deltaY,
 					h: massRadius * 2,
 					w: massRadius * 2,
 					radius: massRadius,

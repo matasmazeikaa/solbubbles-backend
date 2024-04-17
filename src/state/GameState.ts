@@ -3,14 +3,18 @@ import { FoodState } from './FoodState';
 import { TopPlayerState } from './LeaderboardState';
 import { Player } from './PlayerState';
 import { VirusState } from './VirusState';
-import { isCircleOverlapping, massToRadius } from '@/utils/game-util';
+import {
+	getDistance,
+	isCircleOverlapping,
+	massToRadius
+} from '@/utils/game-util';
 import { GameConfig } from '@/config/game-config';
 import { MassFoodState } from './MassFoodState';
 import { Target } from './TargetState';
 import { increaseUserKillCount } from '@/modules/userStatisticsModule';
 import { CellState } from './CellState';
 import { Circle, Quadtree } from '@timohausmann/quadtree-ts';
-
+import { logger } from 'logger';
 
 export class GameState extends Schema {
 	@type({ map: Player })
@@ -114,9 +118,9 @@ export class GameState extends Schema {
 			cell.radius >
 			Math.sqrt(
 				(cell.x - collidingCell.data.x) ** 2 +
-				(cell.y - collidingCell.data.y) ** 2
+					(cell.y - collidingCell.data.y) ** 2
 			) *
-			1.2;
+				1.2;
 
 		const isMassBigger = cell.mass > collidingCell.data.mass * 1.1;
 
@@ -129,6 +133,9 @@ export class GameState extends Schema {
 		const nearbyViruses = this.virusQuadTree.retrieve(
 			mass
 		) as Circle<VirusState>[];
+		const nearbyCells = this.cellQuadTree.retrieve(
+			mass
+		) as Circle<CellState>[];
 
 		for (let i = 0; i < nearbyViruses.length; i++) {
 			const virus = nearbyViruses[i];
@@ -160,65 +167,102 @@ export class GameState extends Schema {
 				this.massFoodQuadTree.remove(mass);
 			}
 		}
+
+		for (let i = 0; i < nearbyCells.length; i++) {
+			const cell = nearbyCells[i];
+			const player = this.players.get(cell.data.createdPlayerId);
+			const cellState = player.cells.get(cell.data.id);
+
+			const isColliding = isCircleOverlapping(
+				{ x: cell.x, y: cell.y, r: cell.r },
+				{ x: mass.x, y: mass.y, r: mass.radius },
+			);
+
+			const isTimePassed = Date.now() - mass.createdAt > 200;
+			const isCreator = mass.createdPlayerId === player.id;
+
+			if ((isTimePassed || !isCreator) && isColliding) {
+				this.massFood.delete(mass.id);
+				this.massFoodQuadTree.remove(mass);
+
+				cellState.mass += mass.masa;
+				cellState.radius = massToRadius(cellState.mass);
+				player.massTotal += mass.masa;
+			}
+		}
+				
 	}
 
-	handleEatFood(cell: CellState, player: Player) {
-		let foodEatenCount = 0;
+	tickFoodEat(food: FoodState) {
+		const nearbyCells = this.cellQuadTree.retrieve(
+			food
+		) as Circle<CellState>[];
+
+		let isFoodEaten = false;
+
+		for (let i = 0; i < nearbyCells.length; i++) {
+			const nearbyCell = nearbyCells[i];
+			const player = this.players.get(nearbyCell.data.createdPlayerId);
+			const cell = player.cells.get(nearbyCell.data.id);
+
+			const isEaten =
+				getDistance(
+					{ x: food.x, y: food.y },
+					{ x: cell.x, y: cell.y }
+				) < Math.abs(cell.radius - food.radius);
+
+			if (isEaten) {
+				this.food.delete(food.id);
+				this.foodQuadTree.remove(food);
+				isFoodEaten = true;
+			}
+
+			if (isFoodEaten) {
+				cell.mass += GameConfig.foodMass;
+				cell.radius = massToRadius(cell.mass);
+				player.massTotal += GameConfig.foodMass;
+				isFoodEaten = false;
+			}
+		}
+	}
+
+	handleFoodMagnet(cell: CellState, player: Player) {
 		let food: Circle<CellState>;
 
-		const neardbyFoods = this.foodQuadTree.retrieve(cell) as Circle<CellState>[];
+		const neardbyFoods = this.foodQuadTree.retrieve(
+			cell
+		) as Circle<CellState>[];
 
 		for (let i = 0; i < neardbyFoods.length; i++) {
 			food = neardbyFoods[i];
+			const foodEaten = this.food.get(food.data.id);
 
-			const isOverlapping = isCircleOverlapping(
+			const isNearby = isCircleOverlapping(
 				{ x: cell.x, y: cell.y, r: cell.radius },
 				{ x: food.data.x, y: food.data.y, r: food.data.radius },
-				-food.r * 2
+				-food.r
 			);
 
-			if (isOverlapping) {
+			if (isNearby && foodEaten.speed === 0) {
+				foodEaten.speed = 10;
+				foodEaten.target = new Target().assign({
+					x: cell.x - foodEaten.x,
+					y: cell.y - foodEaten.y
+				});
+
+				foodEaten.eatenTimer = Date.now();
+			}
+
+			const canEat = Date.now() - 1000 * 0.1 > foodEaten.eatenTimer;
+
+			if (canEat) {
 				this.food.delete(food.data.id);
 				this.foodQuadTree.remove(food);
-				foodEatenCount++;
+				cell.mass += GameConfig.foodMass;
+				cell.radius = massToRadius(cell.mass);
+				player.massTotal += GameConfig.foodMass;
 			}
 		}
-
-		const newMass = foodEatenCount * GameConfig.foodMass;
-
-		if (newMass === 0) return;
-
-		cell.mass += newMass;
-		cell.radius = massToRadius(cell.mass);
-		player.massTotal += newMass;
-	}
-
-	handleEatMassFood(cell: CellState, player: Player) {
-		let massEatenCount = 0;
-
-		const nearbyMassFood = this.massFoodQuadTree.retrieve(
-			cell
-		) as Circle<MassFoodState>[];
-
-		for (let i = 0; i < nearbyMassFood.length; i++) {
-			const mass = nearbyMassFood[i];
-
-			const isColliding = isCircleOverlapping(
-				{ x: cell.x, y: cell.y, r: cell.radius },
-				{ x: mass.x, y: mass.y, r: mass.r },
-				-mass.r
-			);
-
-			if (Date.now() - mass.data.createdAt > 1000 && isColliding) {
-				this.massFood.delete(mass.data.id);
-				this.massFoodQuadTree.remove(mass);
-				massEatenCount += mass.data.masa;
-			}
-		}
-
-		cell.mass += massEatenCount;
-		cell.radius = massToRadius(cell.mass);
-		player.massTotal += massEatenCount;
 	}
 
 	handleVirusCollision(cell: CellState, player: Player) {
@@ -251,7 +295,9 @@ export class GameState extends Schema {
 	}
 
 	handleCellCollision(cell: CellState, player: Player) {
-		const nearbyCells = this.cellQuadTree.retrieve(cell) as Circle<CellState>[];
+		const nearbyCells = this.cellQuadTree.retrieve(
+			cell
+		) as Circle<CellState>[];
 
 		for (let i = 0; i < nearbyCells.length; i++) {
 			const nearbyCell = nearbyCells[i];
@@ -298,8 +344,8 @@ export class GameState extends Schema {
 			}
 		} else if (distance < radiusTotal / 1.75) {
 			cell.mass += nearbyCell.data.mass;
-			cell.splTokens += nearbyCell.data.splTokens;
 			cell.radius = massToRadius(cell.mass);
+			cell.splTokens += nearbyCell.data.splTokens;
 			player.cells.delete(nearbyCell.data.id);
 			this.cellQuadTree.remove(nearbyCell);
 		}
@@ -309,9 +355,6 @@ export class GameState extends Schema {
 		let x = 0;
 		let y = 0;
 
-		// if (player.type === 'bot') {
-		// 	return;
-		// }
 
 		player.cells.forEach((cell) => {
 			player.move(cell);
@@ -319,8 +362,8 @@ export class GameState extends Schema {
 			x += cell.x;
 			y += cell.y;
 
-			this.handleEatFood(cell, player);
-			this.handleEatMassFood(cell, player);
+			this.handleFoodMagnet(cell, player);
+			// this.handleEatMassFood(cell, player);
 			this.handleVirusCollision(cell, player);
 			this.handleCellCollision(cell, player);
 		});
@@ -366,7 +409,7 @@ export class GameState extends Schema {
 		}
 	}
 
-	tickEntity(entity: MassFoodState | VirusState) {
+	tickEntity(entity: MassFoodState | VirusState | FoodState) {
 		if (entity.speed === 0) {
 			return;
 		}
@@ -415,6 +458,12 @@ export class GameState extends Schema {
 		this.tickEntity(mass);
 	}
 
+	tickFood(food: FoodState) {
+		this.tickEntity(food);
+
+		// this.tickFoodEat(food);
+	}
+
 	moveLoop() {
 		// const performanceStart = performance.now();
 
@@ -456,6 +505,18 @@ export class GameState extends Schema {
 			this.massFoodQuadTree.insert(treeCircle);
 		});
 
+		this.foodQuadTree.clear();
+		this.food.forEach((food) => {
+			const treeCircle = new Circle({
+				x: food.x,
+				y: food.y,
+				r: food.radius,
+				data: food
+			});
+
+			this.foodQuadTree.insert(treeCircle);
+		});
+
 		this.players.forEach((player) => {
 			this.tickPlayer(player);
 		});
@@ -465,5 +526,7 @@ export class GameState extends Schema {
 		});
 
 		this.virus.forEach((virus) => this.tickVirus(virus));
+
+		this.food.forEach((food) => this.tickFood(food));
 	}
 }

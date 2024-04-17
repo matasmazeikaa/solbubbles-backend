@@ -18,6 +18,9 @@ export class CellState extends Schema {
 	mass: number;
 
 	@type('number')
+	baseMass: number;
+
+	@type('number')
 	x: number;
 
 	@type('number')
@@ -43,6 +46,9 @@ export class CellState extends Schema {
 
 	@type(Target)
 	target: Target = new Target();
+
+	@type('number')
+	targetMass: number;
 
 	@type(Target)
 	velocity: Target = new Target();

@@ -9,6 +9,24 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      game_state: {
+        Row: {
+          createdAt: string
+          id: string
+          players: Json | null
+        }
+        Insert: {
+          createdAt?: string
+          id: string
+          players?: Json | null
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          players?: Json | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           createdAt: string | null

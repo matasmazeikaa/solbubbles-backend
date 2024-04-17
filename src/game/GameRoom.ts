@@ -9,13 +9,14 @@ import { GameConfig } from '@/config/game-config';
 import { GameState } from '@/state/GameState';
 import {
 	increaseUserBalanceWithTokens,
-	lowerUserBalanceWithLamports
+	lowerUserBalanceWithTokens
 } from '@/modules/userModule';
 import { restorePlayerBalances } from '@/modules/backupModule';
 import { toNumberSafe } from '@/utils/game-util';
 import { getServiceClient } from '@/supabasedb';
 import { TOKEN_CONFIG } from '@/constants';
 import { increaseUserTotalWinnings } from '@/modules/userStatisticsModule';
+import { logger } from 'logger';
 export class GameRoom extends Room<GameState> {
 	@type('number')
 	roomSplTokenEntryFee: number;
@@ -32,12 +33,11 @@ export class GameRoom extends Room<GameState> {
 		}
 	}
 
-
 	async handleUserRoomEnter(jwtToken: string) {
 		const decodedData = jwt.verify(jwtToken, process.env.JWT_SECRET) as {
 			publicKey: string;
 			signature: string;
-			nonce: number
+			nonce: number;
 		};
 
 		if (
@@ -83,10 +83,10 @@ export class GameRoom extends Room<GameState> {
 			);
 		}
 
-		return await lowerUserBalanceWithLamports(
-			decodedData.publicKey,
-			entryLamports
-		);
+		return await lowerUserBalanceWithTokens({
+			publicKey: decodedData.publicKey,
+			amountToLower: this.roomSplTokenEntryFee
+		});
 	}
 
 	isAlreadyInGameRoom(publicKey: string) {
@@ -101,9 +101,7 @@ export class GameRoom extends Room<GameState> {
 		return isFound;
 	}
 
-	onCreate(options: {
-		roomSplTokenEntryFee: number;
-	}) {
+	onCreate(options: { roomSplTokenEntryFee: number }) {
 		this.maxClients = 100;
 
 		this.setState(new GameState());
@@ -121,7 +119,9 @@ export class GameRoom extends Room<GameState> {
 		});
 
 		this.onMessage('fire-food', (client) => {
-			this.state.players.get(client.sessionId).fireFood(this.state.massFood);
+			this.state.players
+				.get(client.sessionId)
+				.fireFood(this.state.massFood);
 		});
 
 		this.onMessage('split', (client) => {
@@ -165,17 +165,26 @@ export class GameRoom extends Room<GameState> {
 
 			if (secondsDiff <= 0) {
 				try {
+					await getServiceClient()
+						.from('game_state')
+						.upsert({
+							id: this.roomName,
+							players: this.state.players.toJSON()
+						})
+						.single();
+
 					const data = await increaseUserBalanceWithTokens({
 						publicKey: client.auth.publicKey,
 						amountToIncrease: player.splTokens
-					})
+					});
 
 					this.state.players.delete(client.sessionId);
 
 					if (player.splTokens > this.roomSplTokenEntryFee) {
 						increaseUserTotalWinnings({
 							publicKey: client.auth.publicKey,
-							tokensWon: player.splTokens - this.roomSplTokenEntryFee
+							tokensWon:
+								player.splTokens - this.roomSplTokenEntryFee
 						});
 					}
 
@@ -201,15 +210,38 @@ export class GameRoom extends Room<GameState> {
 		updateLobby(this);
 	}
 
-	onJoin(client: Client, options: {
-		publicKey: string;
-	}) {
+	async onJoin(
+		client: Client,
+		options: {
+			publicKey: string;
+		}
+	) {
 		this.dispatcher.dispatch(new OnJoinCommand(), {
 			sessionId: client.sessionId,
 			roomSplTokenEntryFee: this.roomSplTokenEntryFee,
 			publicKey: options.publicKey,
 			client
 		});
+
+		console.log('onJoin', options);
+		console.log('onJoin', this.roomName);
+
+		console.log(this.state.players.toJSON());
+
+		const { data, error } = await getServiceClient()
+			.from('game_state')
+			.upsert({
+				id: this.roomName,
+				players: this.state.players.toJSON()
+			})
+			.single();
+
+		if (error) {
+			logger.error(error);
+			throw new ServerError(400, 'Failed to save game state');
+		}
+
+		console.log(data);
 
 		client.send('room-info', {
 			roomSplTokenEntryFee: this.roomSplTokenEntryFee
@@ -225,15 +257,24 @@ export class GameRoom extends Room<GameState> {
 				roomSplTokenEntryFee: this.roomSplTokenEntryFee
 			});
 		} catch (e) {
+			const { error } = await getServiceClient()
+				.from('game_state')
+				.upsert({
+					id: this.roomName,
+					players: this.state.players.toJSON()
+				})
+				.single();
+
+			if (error) {
+				logger.error(error);
+				throw new ServerError(400, 'Failed to save game state');
+			}
+
 			increaseUserBalanceWithTokens({
 				publicKey: client.auth.publicKey,
 				amountToIncrease: this.roomSplTokenEntryFee
 			});
 			this.state.players.delete(client.sessionId);
 		}
-	}
-
-	async onDispose() {
-		await restorePlayerBalances(this.state.players);
 	}
 }

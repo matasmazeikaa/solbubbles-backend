@@ -1,5 +1,6 @@
 import { Schema, type } from '@colyseus/schema';
 import { Circle, NodeGeometry } from '@timohausmann/quadtree-ts';
+import { Target } from './TargetState';
 
 export class FoodState extends Schema {
 	@type('string')
@@ -20,6 +21,15 @@ export class FoodState extends Schema {
 	@type('number')
 	hue: number;
 
+	@type('number')
+	speed: number;
+
+	@type('number')
+	eatenTimer: number;
+
+	@type(Target)
+	target: Target = new Target();
+
 	constructor(
 		id: string,
 		x: number,
@@ -36,6 +46,8 @@ export class FoodState extends Schema {
 		this.radius = radius;
 		this.mass = mass;
 		this.hue = hue;
+		this.speed = 0;
+		this.target = new Target();
 	}
 
 	qtIndex(node: NodeGeometry) {

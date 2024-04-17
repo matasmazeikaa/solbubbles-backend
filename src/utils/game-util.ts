@@ -1,6 +1,6 @@
 import { GameConfig } from "@/config/game-config";
 
-const getDistance = (
+export const getDistance = (
 	pointA: { x: number; y: number },
 	pointB: { x: number; y: number }
 ) => {

@@ -170,7 +170,6 @@ const pollSignatureStatusUntillFinalized = async (
 	signature: string,
 	lastTime?: number
 ): Promise<RpcResponseAndContext<SignatureStatus>> => {
-	console.log(Date.now() - lastTime, 'last time');
 	try {
 		const status = await connection.getSignatureStatus(signature, {
 			searchTransactionHistory: true

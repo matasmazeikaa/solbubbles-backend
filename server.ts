@@ -14,6 +14,7 @@ import { TOKEN_CONFIG } from '@/constants';
 import { logger } from 'logger';
 import { WebSocketTransport } from "@colyseus/ws-transport"
 import fs from 'fs';
+import { restorePlayerBalances } from '@/modules/backupModule';
 const app = express();
 
 Sentry.init({
@@ -54,6 +55,8 @@ const gameServer = new Server({
 		}, app),
 	})
 });
+
+restorePlayerBalances();
 
 const ROOM = {
 	gameRoom1: {
