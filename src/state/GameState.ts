@@ -193,39 +193,6 @@ export class GameState extends Schema {
 				
 	}
 
-	tickFoodEat(food: FoodState) {
-		const nearbyCells = this.cellQuadTree.retrieve(
-			food
-		) as Circle<CellState>[];
-
-		let isFoodEaten = false;
-
-		for (let i = 0; i < nearbyCells.length; i++) {
-			const nearbyCell = nearbyCells[i];
-			const player = this.players.get(nearbyCell.data.createdPlayerId);
-			const cell = player.cells.get(nearbyCell.data.id);
-
-			const isEaten =
-				getDistance(
-					{ x: food.x, y: food.y },
-					{ x: cell.x, y: cell.y }
-				) < Math.abs(cell.radius - food.radius);
-
-			if (isEaten) {
-				this.food.delete(food.id);
-				this.foodQuadTree.remove(food);
-				isFoodEaten = true;
-			}
-
-			if (isFoodEaten) {
-				cell.mass += GameConfig.foodMass;
-				cell.radius = massToRadius(cell.mass);
-				player.massTotal += GameConfig.foodMass;
-				isFoodEaten = false;
-			}
-		}
-	}
-
 	handleFoodMagnet(cell: CellState, player: Player) {
 		let food: Circle<CellState>;
 
@@ -527,6 +494,6 @@ export class GameState extends Schema {
 
 		this.virus.forEach((virus) => this.tickVirus(virus));
 
-		this.food.forEach((food) => this.tickFood(food));
+		// this.food.forEach((food) => this.tickFood(food));
 	}
 }
