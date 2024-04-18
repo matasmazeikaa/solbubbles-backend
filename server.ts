@@ -14,7 +14,7 @@ import { TOKEN_CONFIG } from '@/constants';
 import { logger } from '@/logger';
 import { WebSocketTransport } from "@colyseus/ws-transport"
 
-import fs from 'fs';
+// import fs from 'fs';
 const app = express();
 
 Sentry.init({
