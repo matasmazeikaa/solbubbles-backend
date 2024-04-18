@@ -9,7 +9,7 @@ import {
 	lowerUserBalanceWithLamports
 } from './userModule';
 import { getServiceClient } from '@/supabasedb';
-import { logger } from 'logger';
+import { logger } from '@/logger';
 
 export interface Transaction {
 	blockTime: number;
@@ -279,7 +279,7 @@ export const processTransaction = async ({
 		transactionsBeingProcessed = transactionsBeingProcessed.map(
 			(transaction) => {
 				if (transaction.transactionSignature === transactionSignature) {
-					return {transactionSignature, error: `${transaction.transactionSignature} - ${error}`};
+					return { transactionSignature, error: `${transaction.transactionSignature} - ${error}` };
 				}
 
 				return transaction;

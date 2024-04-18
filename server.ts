@@ -11,8 +11,9 @@ import bodyParser from 'body-parser';
 import routes from './routes';
 import { GameRoom } from '@/game/GameRoom';
 import { TOKEN_CONFIG } from '@/constants';
-import { logger } from 'logger';
+import { logger } from '@/logger';
 import { WebSocketTransport } from "@colyseus/ws-transport"
+
 import fs from 'fs';
 const app = express();
 
@@ -50,7 +51,7 @@ const gameServer = new Server({
 	transport: new WebSocketTransport({
 		server: createServer({
 			key: fs.readFileSync("/etc/ssl/localhost/localhost.key"),
-			cert: fs.readFileSync("/etc/ssl/localhost/localhost.crt")		
+			cert: fs.readFileSync("/etc/ssl/localhost/localhost.crt")
 		}, app),
 	})
 });
