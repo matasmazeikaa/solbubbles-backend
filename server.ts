@@ -56,8 +56,6 @@ const gameServer = new Server({
 	})
 });
 
-restorePlayerBalances();
-
 const ROOM = {
 	gameRoom1: {
 		id: 'game-room-1',
@@ -68,11 +66,15 @@ const ROOM = {
 		id: 'game-room-2',
 		roomSplTokenEntryFee: 100,
 		roomSplLamporsEntryFee: 100 * TOKEN_CONFIG.LAMPORTS_PER_TOKEN
-	}
+	},
+	gameRoom3: {
+		id: 'game-room-3',
+		roomSplTokenEntryFee: 500,
+		roomSplLamporsEntryFee: 500 * TOKEN_CONFIG.LAMPORTS_PER_TOKEN
+	},
 } as const;
 
 gameServer.listen(3000);
-
 gameServer.define('lobby', LobbyRoom);
 
 export const rooms = [
@@ -86,6 +88,13 @@ export const rooms = [
 	gameServer
 		.define(ROOM.gameRoom2.id, GameRoom, {
 			roomSplTokenEntryFee: ROOM.gameRoom2.roomSplTokenEntryFee
+		})
+		.enableRealtimeListing()
+		.setMaxListeners(100),
+
+	gameServer
+		.define(ROOM.gameRoom3.id, GameRoom, {
+			roomSplTokenEntryFee: ROOM.gameRoom3.roomSplTokenEntryFee
 		})
 		.enableRealtimeListing()
 		.setMaxListeners(100)

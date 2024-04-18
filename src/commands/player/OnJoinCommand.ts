@@ -32,6 +32,7 @@ export class OnJoinCommand extends Command<GameRoom, OnJoinCommandPayload> {
 			type: 'player',
 			speed: Number(GameConfig.startingSpeed),
 			splTokens: roomSplTokenEntryFee,
+			roomSplTokenEntryFee,
 			publicKey,
 			client
 		});

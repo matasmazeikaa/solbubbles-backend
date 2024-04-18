@@ -30,7 +30,5 @@ export const restorePlayerBalances = async () => {
 			id: room.id,
 			players: {}
 		})
-
-		console.log(error)
 	});
 };

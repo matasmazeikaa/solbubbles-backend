@@ -242,9 +242,6 @@ export const processTransaction = async ({
 
 		const transactionAmount = getTransactionTokenAmount(parsedTransaction);
 
-		console.log(transactionAmount, 'transaction amount');
-		console.log(JSON.stringify(parsedTransaction), 'transaction');
-
 		if (transactionAmount === null) {
 			throw new Error('Transaction amount not found');
 		}
@@ -296,7 +293,5 @@ export const processTransaction = async ({
 			transactionSignature,
 			error: error as Error
 		});
-
-		throw Error(errorMessage);
 	}
 };

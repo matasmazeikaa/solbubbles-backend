@@ -66,7 +66,7 @@ export class CellState extends Schema {
 
 	increaseMass(amount: number) {
 		this.mass += amount;
-		this.radius = massToRadius(amount);
+		this.radius = massToRadius(this.mass);
 	}
 
 	decreaseMass(amount: number) {

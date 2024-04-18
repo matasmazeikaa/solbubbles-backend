@@ -13,6 +13,7 @@ const getOrCreateUserStatistics = async (publicKey: string) => {
 			.insert({
 				publicKey
 			})
+			.select()
 			.single();
 	}
 
@@ -39,14 +40,10 @@ export const increaseUserKillCount = async ({
 
 	const killCount = request.data.killCount + kills;
 
-	console.log(publicKey);
-
-	request = await getServiceClient()
-		.from('user_statistics')
-		.upsert({
-			killCount,
-			publicKey
-		})
+	request = await getServiceClient().from('user_statistics').upsert({
+		killCount,
+		publicKey
+	});
 
 	if (request.error) {
 		throw Error(request.error.message);
@@ -54,6 +51,41 @@ export const increaseUserKillCount = async ({
 
 	return request.data;
 };
+
+export const decreaseUserTotalWinnings = async ({
+	publicKey,
+	tokensLost
+}: {
+	publicKey: string;
+	tokensLost: number;
+}) => {
+	z.object({
+		publicKey: z.string(),
+		tokensLost: z.number()
+	}).parse({ publicKey, tokensLost });
+
+	let request = await getOrCreateUserStatistics(publicKey);
+
+	if (request.error) {
+		throw Error(request.error.message);
+	}
+
+	const totalTokenWinnings = request.data.totalTokenWinnings - tokensLost;
+
+	request = await getServiceClient()
+		.from('user_statistics')
+		.update({
+			totalTokenWinnings
+		})
+		.eq('publicKey', publicKey)
+		.single();
+
+	if (request.error) {
+		throw Error(request.error.message);
+	}
+
+	return request.data;
+}
 
 export const increaseUserTotalWinnings = async ({
 	publicKey,

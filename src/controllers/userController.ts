@@ -45,10 +45,7 @@ userController.post(
 				publicKey,
 				transactionSignature: transactionHash
 			});
-		} catch (error) {
-			console.log(error);
-			res.status(404).json({ errorMessage: error });
-		}
+		} catch (error) {}
 
 		if (!user) {
 			res.status(404).json({ errorMessage: 'User not found' });

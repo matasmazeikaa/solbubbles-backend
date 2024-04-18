@@ -101,6 +101,8 @@ export class Player extends Schema {
 		this.publicKey = publicKey;
 		this.client = client;
 
+		this.lastActionTick = Date.now();
+
 		const cell = new CellState().assign({
 			createdPlayerId: this.id,
 			mass: Number(GameConfig.startingPlayerMass),
@@ -141,6 +143,10 @@ export class Player extends Schema {
 		});
 
 		return total;
+	}
+
+	softDelete() {
+		this.isCashedOut = true;
 	}
 
 	updateLastTick() {
@@ -263,7 +269,7 @@ export class Player extends Schema {
 	move(cell: CellState) {
 		
 		if (cell.type === 'bot') {
-			return;
+			// return;
 			this.moveBot();
 		}
 
