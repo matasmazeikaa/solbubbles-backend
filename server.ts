@@ -6,14 +6,13 @@ import { LobbyRoom } from 'colyseus';
 import { Server } from '@colyseus/core';
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { createServer } from 'https';
+import { createServer } from 'http';
 import bodyParser from 'body-parser';
 import routes from './routes';
 import { GameRoom } from '@/game/GameRoom';
 import { TOKEN_CONFIG } from '@/constants';
 import { logger } from '@/logger';
 import { WebSocketTransport } from "@colyseus/ws-transport"
-
 // import fs from 'fs';
 const app = express();
 
