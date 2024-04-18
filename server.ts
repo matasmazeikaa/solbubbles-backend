@@ -49,10 +49,7 @@ app.use('/monitor', monitor());
 const gameServer = new Server({
 	logger: logger,
 	transport: new WebSocketTransport({
-		server: createServer({
-			key: fs.readFileSync("/etc/ssl/localhost/localhost.key"),
-			cert: fs.readFileSync("/etc/ssl/localhost/localhost.crt")
-		}, app),
+		server: createServer(app),
 	})
 });
 
