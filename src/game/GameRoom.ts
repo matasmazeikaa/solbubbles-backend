@@ -15,7 +15,6 @@ import { toNumberSafe } from '@/utils/game-util';
 import { getServiceClient } from '@/supabasedb';
 import { TOKEN_CONFIG } from '@/constants';
 import { increaseUserTotalWinnings } from '@/modules/userStatisticsModule';
-import { logger } from 'logger';
 export class GameRoom extends Room<GameState> {
 	@type('number')
 	roomSplTokenEntryFee: number;
