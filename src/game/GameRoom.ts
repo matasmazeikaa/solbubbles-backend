@@ -15,6 +15,8 @@ import { toNumberSafe } from '@/utils/game-util';
 import { getServiceClient } from '@/supabasedb';
 import { TOKEN_CONFIG } from '@/constants';
 import { increaseUserTotalWinnings } from '@/modules/userStatisticsModule';
+import dayjs from 'dayjs';
+
 export class GameRoom extends Room<GameState> {
 	@type('number')
 	roomSplTokenEntryFee: number;
@@ -164,9 +166,9 @@ export class GameRoom extends Room<GameState> {
 			}
 
 			// Don't allow to cashout before cooldown ends
-			const currentTime = Date.now();
+			const currentTime = dayjs().valueOf();
 			const diff =
-				currentTime - new Date(player.lastActionTick).getTime();
+				currentTime - dayjs(player.lastActionTick).valueOf();
 			const secondsDiff =
 				GameConfig.cashoutCooldown - Math.floor((diff / 1000) % 60);
 

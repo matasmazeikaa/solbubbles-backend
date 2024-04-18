@@ -10,10 +10,15 @@ import { BotConfig, GameConfig } from '@/config/game-config';
 import { MassFoodState } from './MassFoodState';
 import { Target } from './TargetState';
 import { Circle } from '@timohausmann/quadtree-ts';
+import dayjs from 'dayjs';
 
 const initMassLog = log(GameConfig.defaultPlayerMass, GameConfig.slowBase);
 
 // An abstract player object, demonstrating a potential 2D world position
+
+console.log(dayjs().unix());
+console.log(Date.now(), 'date now');
+
 export class Player extends Schema {
 	@type('number')
 	radius: number = massToRadius(GameConfig.startingPlayerMass);
@@ -58,7 +63,7 @@ export class Player extends Schema {
 	roomId: string = null;
 
 	@type('number')
-	lastActionTick: number = Date.now();
+	lastActionTick: number = dayjs().valueOf();
 
 	@type(Target)
 	target: Target = new Target();
@@ -91,7 +96,7 @@ export class Player extends Schema {
 	}) {
 		super();
 
-		this.immunityStart = Date.now();
+		this.immunityStart = dayjs().valueOf();
 
 		this.id = id;
 		this.x = position.x;
@@ -101,7 +106,7 @@ export class Player extends Schema {
 		this.publicKey = publicKey;
 		this.client = client;
 
-		this.lastActionTick = Date.now();
+		this.lastActionTick = dayjs().valueOf();
 
 		const cell = new CellState().assign({
 			createdPlayerId: this.id,
@@ -150,7 +155,7 @@ export class Player extends Schema {
 	}
 
 	updateLastTick() {
-		this.lastActionTick = Date.now();
+		this.lastActionTick = dayjs().valueOf();
 	}
 
 	absorbCell(aCell: CellState, bCell: CellState) {
@@ -199,8 +204,8 @@ export class Player extends Schema {
 			splTokens: cellCryptoAmount2
 		});
 
-		this.lastActionTick = Date.now();
-		this.lastSplit = Date.now();
+		this.lastActionTick = dayjs().valueOf();
+		this.lastSplit = dayjs().valueOf();
 
 		return newCell;
 	}
@@ -339,7 +344,7 @@ export class Player extends Schema {
 				cell.mass -= masa;
 				cell.radius = massToRadius(cell.mass);
 				this.massTotal -= masa;
-				this.lastActionTick = Date.now();
+				this.lastActionTick = dayjs().valueOf();
 				
 				const deg = Math.atan2(this.target.y, this.target.x);
 				const deltaY = cell.radius * Math.sin(deg);
@@ -362,7 +367,7 @@ export class Player extends Schema {
 					w: massRadius * 2,
 					radius: massRadius,
 					speed: 25,
-					createdAt: Date.now()
+					createdAt: dayjs().valueOf()
 				});
 
 				massFood.set(mass.id, mass);
