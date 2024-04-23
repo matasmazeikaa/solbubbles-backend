@@ -31,7 +31,7 @@ export enum VirusConfig {
 }
 
 export const BotConfig = {
-	ACTIVE: true,
+	ACTIVE: false,
 	MAX_BOT: 40,
 	SPEED: 50,
 	startingSpeed: 6.25,
