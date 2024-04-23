@@ -16,8 +16,8 @@ export enum GameConfig {
 	newPlayerInitialPosition = 'farthest',
 	massLossRate = 1,
 	minMassLoss = 50,
-	mergeTimer = 4,
-	cashoutCooldown = 5,
+	mergeTimer = 15,
+	cashoutCooldown = 30,
 	immunityTimer = 10,
 	maxRoomUserAmount = 100
 };
