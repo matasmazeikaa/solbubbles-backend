@@ -155,7 +155,15 @@ export class GameRoom extends Room<GameState> {
 		});
 
 		this.onMessage('ping', (client, message) => {
-			client.send('pong', message);
+			const player = this.state.players.get(client.sessionId);
+
+			const currentTime = dayjs().valueOf();
+			const diff =
+				currentTime - dayjs(player.lastActionTick).valueOf();
+			const secondsDiff =
+				GameConfig.cashoutCooldown - Math.floor((diff / 1000) % 60);
+
+			client.send('pong', secondsDiff);
 		});
 
 		this.onMessage('cash-out', async (client) => {
