@@ -157,6 +157,10 @@ export class GameRoom extends Room<GameState> {
 		this.onMessage('ping', (client) => {
 			const player = this.state.players.get(client.sessionId);
 
+			if (!player) {
+				client.send('pong', 0);
+			}
+
 			const currentTime = dayjs().valueOf();
 			const diff =
 				currentTime - dayjs(player.lastActionTick).valueOf();
