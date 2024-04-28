@@ -159,6 +159,8 @@ export class GameRoom extends Room<GameState> {
 
 			if (!player) {
 				client.send('pong', 0);
+
+				return;
 			}
 
 			const currentTime = dayjs().valueOf();
