@@ -63,7 +63,7 @@ export class Player extends Schema {
 	roomId: string = null;
 
 	@type('number')
-	lastActionTick: number = dayjs().valueOf();
+	lastActionTick: number = dayjs().unix();
 
 	@type(Target)
 	target: Target = new Target();
@@ -96,7 +96,7 @@ export class Player extends Schema {
 	}) {
 		super();
 
-		this.immunityStart = dayjs().valueOf();
+		this.immunityStart = dayjs().unix();
 
 		this.id = id;
 		this.x = position.x;
@@ -106,14 +106,14 @@ export class Player extends Schema {
 		this.publicKey = publicKey;
 		this.client = client;
 
-		this.lastActionTick = dayjs().valueOf();
+		this.lastActionTick = dayjs().unix();
 
 		const cell = new CellState().assign({
 			createdPlayerId: this.id,
 			mass: Number(GameConfig.startingPlayerMass),
 			x: this.x,
 			y: this.y,
-						w: this.radius * 2,
+			w: this.radius * 2,
 			h: this.radius * 2,
 			type: this.type,
 			radius: this.radius,
@@ -155,7 +155,7 @@ export class Player extends Schema {
 	}
 
 	updateLastTick() {
-		this.lastActionTick = dayjs().valueOf();
+		this.lastActionTick = dayjs().unix();
 	}
 
 	absorbCell(aCell: CellState, bCell: CellState) {
@@ -196,7 +196,7 @@ export class Player extends Schema {
 			mass: cell.mass,
 			x: cell.x,
 			y: cell.y,
-						w: cell.radius * 2,
+			w: cell.radius * 2,
 			h: cell.radius * 2,
 			radius: cell.radius,
 			type: this.type,
@@ -204,8 +204,8 @@ export class Player extends Schema {
 			splTokens: cellCryptoAmount2
 		});
 
-		this.lastActionTick = dayjs().valueOf();
-		this.lastSplit = dayjs().valueOf();
+		this.lastActionTick = dayjs().unix();
+		this.lastSplit = dayjs().unix();
 
 		return newCell;
 	}
@@ -272,7 +272,7 @@ export class Player extends Schema {
 	}
 
 	move(cell: CellState) {
-		
+
 		if (cell.type === 'bot') {
 			// return;
 			this.moveBot();
@@ -344,12 +344,12 @@ export class Player extends Schema {
 				cell.mass -= masa;
 				cell.radius = massToRadius(cell.mass);
 				this.massTotal -= masa;
-				this.lastActionTick = dayjs().valueOf();
-				
+				this.lastActionTick = dayjs().unix();
+
 				const deg = Math.atan2(this.target.y, this.target.x);
 				const deltaY = cell.radius * Math.sin(deg);
 				const deltaX = cell.radius * Math.cos(deg);
-		
+
 
 				const massRadius = massToRadius(masa);
 				const mass = new MassFoodState().assign({
@@ -367,7 +367,7 @@ export class Player extends Schema {
 					w: massRadius * 2,
 					radius: massRadius,
 					speed: 25,
-					createdAt: dayjs().valueOf()
+					createdAt: dayjs().unix()
 				});
 
 				massFood.set(mass.id, mass);

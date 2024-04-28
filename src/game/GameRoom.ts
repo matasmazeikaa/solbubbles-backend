@@ -166,11 +166,11 @@ export class GameRoom extends Room<GameState> {
 			}
 
 			// Don't allow to cashout before cooldown ends
-			const currentTime = dayjs().valueOf();
+			const currentTime = dayjs().unix();
 			const diff =
-				currentTime - dayjs(player.lastActionTick).valueOf();
+				currentTime - dayjs(player.lastActionTick).unix();
 			const secondsDiff =
-				GameConfig.cashoutCooldown - Math.floor((diff / 1000) % 60);
+				GameConfig.cashoutCooldown - diff;
 
 			if (secondsDiff <= 0) {
 				this.state.players.delete(client.sessionId);
