@@ -154,7 +154,7 @@ export class GameRoom extends Room<GameState> {
 			});
 		});
 
-		this.onMessage('ping', (client, message) => {
+		this.onMessage('ping', (client) => {
 			const player = this.state.players.get(client.sessionId);
 
 			const currentTime = dayjs().valueOf();
