@@ -186,8 +186,6 @@ export class GameRoom extends Room<GameState> {
 			const secondsDiff =
 				GameConfig.cashoutCooldown - Math.floor((diff / 1000) % 60);
 
-			console.log('player.lastActionTick', player.lastActionTick)
-
 			if (secondsDiff <= 0) {
 				this.state.players.delete(client.sessionId);
 
